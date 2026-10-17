@@ -12,6 +12,7 @@ MobaXterm에서 자주 쓰는 기능만 골라 만든 경량 터미널 (Go + Wai
 - 시리얼(COM) 콘솔: 속도·데이터 비트·패리티·정지 비트
 - 멀티 실행(체크된 탭에 동시 입력), 매크로(줄 단위 전송 + 줄 간격)
 - 세션 로그 저장(ANSI 제거된 텍스트), 드래그 복사 · 우클릭 붙여넣기(여러 줄은 확인)
+- 한국어 / English UI (설정 → 언어, 기본값은 Windows 언어를 따름)
 
 ## MCP 연동 (Claude Code에서 Hopline 조작)
 상단 **MCP** 버튼 → "MCP 서버 켜기" → 표시된 `claude mcp add ...` 명령을 실행하면 등록됩니다 (127.0.0.1:7781, 토큰 인증).
@@ -42,4 +43,5 @@ Hopline이 실행 중일 때만 연결됩니다.
 | `serial.go` | COM 포트 |
 | `mcp.go`, `outtap.go` | MCP 서버와 도구, 출력 캡처 |
 | `store.go`, `dpapi_windows.go` | 세션/매크로 저장, 비밀번호 암호화 |
+| `i18n.go`, `frontend/src/i18n.js` | 한국어/영어 언어팩 |
 | `frontend/src/main.js` | UI 전체 |

@@ -104,7 +104,7 @@ func (a *App) startMCP() error {
 	}
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
-		return fmt.Errorf("포트 %d 사용 불가: %w", port, err)
+		return fmt.Errorf(T("err.port"), port, err)
 	}
 	server := a.newMCPServer()
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, nil)
@@ -232,7 +232,7 @@ func (a *App) newMCPServer() *mcp.Server {
 				fmt.Fprintf(&b, "- %s | id=%s | %s | folder=%s | %s | password_saved=%v\n", x.Name, x.ID, x.Kind, x.Folder, target, x.HasPassword || x.KeyPath != "")
 			}
 			if b.Len() == 0 {
-				return text("저장된 세션이 없습니다."), nil, nil
+				return text("No saved sessions."), nil, nil
 			}
 			return text(b.String()), nil, nil
 		})
@@ -250,7 +250,7 @@ func (a *App) newMCPServer() *mcp.Server {
 				fmt.Fprintf(&b, "- tab=%s | %s | %s\n", id, lc.name, kind)
 			}
 			if b.Len() == 0 {
-				return text("연결된 탭이 없습니다. open_session으로 여세요."), nil, nil
+				return text("No connected tabs. Use open_session to open one."), nil, nil
 			}
 			return text(b.String()), nil, nil
 		})
@@ -269,19 +269,19 @@ func (a *App) newMCPServer() *mcp.Server {
 			select {
 			case msg := <-ch:
 				if msg != "" {
-					return nil, nil, fmt.Errorf("%s 접속 실패: %s", sess.Name, msg)
+					return nil, nil, fmt.Errorf("%s: connection failed: %s", sess.Name, msg)
 				}
 			case <-time.After(2 * time.Minute):
-				return nil, nil, errors.New("접속 대기 시간 초과 (비밀번호 입력 대기 중이었을 수 있음)")
+				return nil, nil, errors.New("timed out waiting for the connection (the user may not have entered the password)")
 			case <-ctx.Done():
 				return nil, nil, ctx.Err()
 			}
 			lc := a.get(connID)
 			if lc == nil {
-				return nil, nil, errors.New("연결 직후 종료됨")
+				return nil, nil, errors.New("the connection closed right after opening")
 			}
 			time.Sleep(1500 * time.Millisecond)
-			return text(fmt.Sprintf("tab=%s (%s) 연결됨\n---\n%s", connID, sess.Name, lc.out.tail(30))), nil, nil
+			return text(fmt.Sprintf("tab=%s (%s) connected\n---\n%s", connID, sess.Name, lc.out.tail(30))), nil, nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "run_command", Description: "Send a command line to a tab and return its output. Finishes when output goes idle, a shell/CLI prompt appears, `expect` matches, or the timeout hits. For long-running commands pass `expect` (e.g. the prompt) and a larger timeout_sec."},
@@ -343,7 +343,7 @@ func (a *App) newMCPServer() *mcp.Server {
 			if err != nil {
 				return nil, nil, err
 			}
-			a.closeConn(lc, "MCP가 연결을 끊음")
+			a.closeConn(lc, T("msg.mcpDisconnected"))
 			runtime.EventsEmit(a.ctx, "mcp:close", lc.id)
 			return text("closed " + lc.id), nil, nil
 		})
@@ -391,7 +391,7 @@ func (a *App) newMCPServer() *mcp.Server {
 			}
 			note := ""
 			if len(data) > max {
-				data, note = data[:max], fmt.Sprintf("\n[... %d바이트에서 잘림]", max)
+				data, note = data[:max], fmt.Sprintf("\n[... truncated at %d bytes]", max)
 			}
 			return text(string(data) + note), nil, nil
 		})
@@ -411,7 +411,7 @@ func (a *App) newMCPServer() *mcp.Server {
 			if err != nil {
 				return nil, nil, err
 			}
-			return text(fmt.Sprintf("%s: %d바이트 저장", in.Path, n)), nil, nil
+			return text(fmt.Sprintf("%s: wrote %d bytes", in.Path, n)), nil, nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "sftp_download", Description: "Download a remote file to a local Windows path."},
@@ -451,7 +451,7 @@ func (a *App) newMCPServer() *mcp.Server {
 				return nil, nil, err
 			}
 			if st.IsDir() {
-				return nil, nil, errors.New("폴더는 지원하지 않습니다 (파일만)")
+				return nil, nil, errors.New("folders are not supported (files only)")
 			}
 			if err := a.upload(cl, lc.id, in.Local, in.Remote, st.Size()); err != nil {
 				return nil, nil, err
@@ -478,9 +478,9 @@ func (a *App) findSession(q string) (Session, error) {
 		return hits[0], nil
 	}
 	if len(hits) > 1 {
-		return Session{}, fmt.Errorf("이름이 같은 세션이 %d개입니다. id로 지정하세요", len(hits))
+		return Session{}, fmt.Errorf("%d sessions share that name; use the id", len(hits))
 	}
-	return Session{}, fmt.Errorf("세션 %q 없음 (list_sessions 참고)", q)
+	return Session{}, fmt.Errorf("no session %q (see list_sessions)", q)
 }
 
 func (a *App) resolveTab(q string) (*liveConn, error) {
@@ -500,9 +500,9 @@ func (a *App) resolveTab(q string) (*liveConn, error) {
 	case 1:
 		return hits[0], nil
 	case 0:
-		return nil, fmt.Errorf("연결된 탭 %q 없음 (list_tabs 참고)", q)
+		return nil, fmt.Errorf("no connected tab %q (see list_tabs)", q)
 	default:
-		return nil, fmt.Errorf("이름이 %q인 탭이 %d개입니다. tab id로 지정하세요", q, len(hits))
+		return nil, fmt.Errorf("%d tabs are named %q; use the tab id", len(hits), q)
 	}
 }
 
@@ -537,7 +537,7 @@ func (a *App) runCommand(ctx context.Context, lc *liveConn, in runIn) (string, e
 	if in.Expect != "" {
 		re, err := regexp.Compile(in.Expect)
 		if err != nil {
-			return "", fmt.Errorf("expect 정규식 오류: %w", err)
+			return "", fmt.Errorf("invalid expect regex: %w", err)
 		}
 		expect = re
 	}
@@ -558,10 +558,10 @@ loop:
 	for {
 		select {
 		case <-ctx.Done():
-			status = "[취소됨]"
+			status = "[canceled]"
 			break loop
 		case <-deadline.C:
-			status = fmt.Sprintf("[%d초 시간 초과 — 명령이 아직 실행 중일 수 있음. read_output으로 확인하거나 send_keys로 Ctrl+C(\\u0003)]", timeout)
+			status = fmt.Sprintf("[timed out after %ds - the command may still be running; check with read_output or send Ctrl+C (\\u0003) with send_keys]", timeout)
 			break loop
 		case <-c.notify:
 			lastData = time.Now()
@@ -582,7 +582,7 @@ loop:
 			}
 		case <-time.After(150 * time.Millisecond):
 			if a.get(lc.id) == nil {
-				status = "[연결 종료됨]"
+				status = "[connection closed]"
 				break loop
 			}
 			quiet := time.Since(lastData)
@@ -606,7 +606,7 @@ loop:
 		out = out[i+1:]
 	}
 	if len(out) > maxCmdOutput {
-		out = fmt.Sprintf("[앞부분 %d바이트 생략]\n", len(out)-maxCmdOutput) + out[len(out)-maxCmdOutput:]
+		out = fmt.Sprintf("[first %d bytes omitted]\n", len(out)-maxCmdOutput) + out[len(out)-maxCmdOutput:]
 	}
 	if status != "" {
 		out += "\n" + status

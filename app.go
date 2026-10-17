@@ -112,7 +112,7 @@ func (a *App) DeleteMacro(id string) error      { return a.store.DeleteMacro(id)
 func (a *App) PickKeyFile() (string, error) {
 	home, _ := os.UserHomeDir()
 	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title:            "개인키 선택",
+		Title:            T("dlg.pickKey"),
 		DefaultDirectory: filepath.Join(home, ".ssh"),
 	})
 }
@@ -127,12 +127,12 @@ const ErrNeedPassword = "NEED_PASSWORD"
 func (a *App) Connect(connID, sessionID, password string, cols, rows int) error {
 	s, ok := a.store.Get(sessionID)
 	if !ok {
-		return errors.New("세션을 찾을 수 없습니다")
+		return errors.New(T("err.sessionNotFound"))
 	}
 	if password == "" && s.HasPassword {
 		pw, err := a.store.Password(sessionID)
 		if err != nil {
-			return fmt.Errorf("저장된 비밀번호 복호화 실패: %w", err)
+			return fmt.Errorf(T("err.decrypt"), err)
 		}
 		password = pw
 	}
@@ -156,7 +156,7 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 	a.mu.Lock()
 	if _, busy := a.conns[connID]; busy || a.dialing[connID] != nil {
 		a.mu.Unlock()
-		return errors.New("이미 연결되어 있습니다")
+		return errors.New(T("err.alreadyConnected"))
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	a.dialing[connID] = cancel
@@ -252,7 +252,7 @@ func (a *App) closeConn(lc *liveConn, reason string) {
 func (a *App) Write(connID, data string) error {
 	lc := a.get(connID)
 	if lc == nil {
-		return errors.New("연결되지 않음")
+		return errors.New(T("err.notConnected"))
 	}
 	_, err := lc.c.Write([]byte(data))
 	return err
@@ -273,7 +273,7 @@ func (a *App) Resize(connID string, cols, rows int) {
 
 func (a *App) Disconnect(connID string) {
 	if lc := a.get(connID); lc != nil {
-		a.closeConn(lc, "사용자가 연결을 끊음")
+		a.closeConn(lc, T("msg.userDisconnected"))
 	}
 }
 
@@ -301,7 +301,7 @@ var ansiRe = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x
 func (a *App) SetLogging(connID string, on bool) (string, error) {
 	lc := a.get(connID)
 	if lc == nil {
-		return "", errors.New("연결되지 않음")
+		return "", errors.New(T("err.notConnected"))
 	}
 	lc.logMu.Lock()
 	defer lc.logMu.Unlock()

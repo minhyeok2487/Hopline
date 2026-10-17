@@ -32,7 +32,7 @@ func dialSSH(ctx context.Context, s Session, password string, cols, rows int, ou
 	if s.KeyPath != "" {
 		raw, err := os.ReadFile(s.KeyPath)
 		if err != nil {
-			return nil, fmt.Errorf("개인키 읽기 실패: %w", err)
+			return nil, fmt.Errorf(T("ssh.keyRead"), err)
 		}
 		signer, err := ssh.ParsePrivateKey(raw)
 		var pm *ssh.PassphraseMissingError
@@ -43,7 +43,7 @@ func dialSSH(ctx context.Context, s Session, password string, cols, rows int, ou
 			signer, err = ssh.ParsePrivateKeyWithPassphrase(raw, []byte(password))
 		}
 		if err != nil {
-			return nil, fmt.Errorf("개인키 해석 실패: %w", err)
+			return nil, fmt.Errorf(T("ssh.keyParse"), err)
 		}
 		auths = append(auths, ssh.PublicKeys(signer))
 	}
@@ -74,7 +74,7 @@ func dialSSH(ctx context.Context, s Session, password string, cols, rows int, ou
 	}
 
 	addr := net.JoinHostPort(s.Host, strconv.Itoa(s.Port))
-	fmt.Fprintf(out, "\x1b[90m%s 접속 중...\x1b[0m\r\n", addr)
+	fmt.Fprintf(out, "\x1b[90m"+T("ssh.connecting")+"\x1b[0m\r\n", addr)
 	d := net.Dialer{Timeout: 10 * time.Second}
 	nc, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
@@ -143,11 +143,11 @@ func (c *sshConn) wait() string {
 	if err != nil {
 		var ee *ssh.ExitError
 		if errors.As(err, &ee) {
-			return fmt.Sprintf("셸 종료 (코드 %d)", ee.ExitStatus())
+			return fmt.Sprintf(T("ssh.shellExitCode"), ee.ExitStatus())
 		}
 		return err.Error()
 	}
-	return "셸 종료"
+	return T("ssh.shellExit")
 }
 
 func (c *sshConn) Write(p []byte) (int, error) { return c.stdin.Write(p) }
@@ -178,7 +178,7 @@ func (c *sshConn) sftpClient() (*sftp.Client, error) {
 	}
 	cl, err := sftp.NewClient(c.client)
 	if err != nil {
-		return nil, fmt.Errorf("SFTP 사용 불가 (서버가 sftp 서브시스템을 지원하지 않을 수 있음): %w", err)
+		return nil, fmt.Errorf(T("ssh.noSftp"), err)
 	}
 	c.sftp = cl
 	return cl, nil
@@ -204,7 +204,7 @@ func tofuHostKeys(path string, out io.Writer) ssh.HostKeyCallback {
 			return err
 		}
 		if len(ke.Want) > 0 {
-			return fmt.Errorf("호스트 키가 변경되었습니다! (%s)\r\n중간자 공격일 수 있습니다. 장비를 재설치한 경우라면 다음 파일에서 해당 줄을 지우세요:\r\n%s", ssh.FingerprintSHA256(key), path)
+			return fmt.Errorf(T("ssh.hostKeyChanged"), ssh.FingerprintSHA256(key), path)
 		}
 		f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil {
@@ -214,7 +214,7 @@ func tofuHostKeys(path string, out io.Writer) ssh.HostKeyCallback {
 		if _, err := f.WriteString(knownhosts.Line([]string{knownhosts.Normalize(host)}, key) + "\n"); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "\x1b[33m새 호스트 키 저장: %s %s\x1b[0m\r\n", key.Type(), ssh.FingerprintSHA256(key))
+		fmt.Fprintf(out, "\x1b[33m"+T("ssh.hostKeySaved")+"\x1b[0m\r\n", key.Type(), ssh.FingerprintSHA256(key))
 		return nil
 	}
 }

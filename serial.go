@@ -62,9 +62,9 @@ func openSerial(s Session, out io.Writer) (*serialConn, error) {
 	}
 	p, err := serial.Open(s.ComPort, mode)
 	if err != nil {
-		return nil, fmt.Errorf("%s 열기 실패: %w", s.ComPort, err)
+		return nil, fmt.Errorf(T("serial.openFail"), s.ComPort, err)
 	}
-	fmt.Fprintf(out, "\x1b[90m%s 연결됨 (%d %d%s%s)\x1b[0m\r\n", s.ComPort, mode.BaudRate, mode.DataBits, orDefault(s.Parity, "N"), orDefault(s.StopBits, "1"))
+	fmt.Fprintf(out, "\x1b[90m"+T("serial.connected")+"\x1b[0m\r\n", s.ComPort, mode.BaudRate, mode.DataBits, orDefault(s.Parity, "N"), orDefault(s.StopBits, "1"))
 	c := &serialConn{port: p, done: make(chan string, 1)}
 	go func() {
 		buf := make([]byte, 4096)
@@ -78,7 +78,7 @@ func openSerial(s Session, out io.Writer) (*serialConn, error) {
 				return
 			}
 			if n == 0 { // port closed / device removed
-				c.done <- "포트가 닫혔습니다"
+				c.done <- T("serial.closed")
 				return
 			}
 		}

@@ -39,10 +39,10 @@ type transferProgress struct {
 func (a *App) sftpFor(connID string) (*sftp.Client, error) {
 	lc := a.get(connID)
 	if lc == nil {
-		return nil, errors.New("연결되지 않음")
+		return nil, errors.New(T("err.notConnected"))
 	}
 	if lc.ssh == nil {
-		return nil, errors.New("SSH 세션이 아닙니다")
+		return nil, errors.New(T("err.notSSH"))
 	}
 	return lc.ssh.sftpClient()
 }
@@ -121,7 +121,7 @@ func (a *App) SftpDownload(connID, remote string) error {
 		return err
 	}
 	local, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-		Title:           "다운로드 위치",
+		Title:           T("dlg.downloadTo"),
 		DefaultFilename: path.Base(remote),
 	})
 	if err != nil || local == "" {
@@ -159,7 +159,7 @@ func (a *App) download(cl *sftp.Client, connID, remote, local string) error {
 
 // SftpUploadDialog picks local files and uploads them into remoteDir.
 func (a *App) SftpUploadDialog(connID, remoteDir string) error {
-	files, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{Title: "업로드할 파일"})
+	files, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{Title: T("dlg.uploadFiles")})
 	if err != nil || len(files) == 0 {
 		return err
 	}

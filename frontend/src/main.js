@@ -10,6 +10,7 @@ import {
 } from '../wailsjs/runtime/runtime';
 import {icon, hydrateIcons} from './icons';
 import {SCHEMES, FONTS, resolveScheme, fontStack} from './themes';
+import {LANGS, t, setLang, resolveLang, applyStatic} from './i18n';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -31,6 +32,7 @@ const state = {
 // ---------------------------------------------------------------- preferences
 
 const DEFAULT_PREFS = {
+    lang: 'auto',              // auto | ko | en
     appTheme: 'system',        // system | dark | light
     termScheme: 'auto',
     fontFamily: 'D2Coding',
@@ -89,6 +91,20 @@ function applyTheme() {
     renderStatus();
 }
 
+function applyLanguage() {
+    const lang = resolveLang(prefs.lang);
+    setLang(lang);
+    App.SetLanguage(lang).catch(() => {});
+    applyStatic();
+    for (const tab of state.tabs) applyStatic(tab.pane);
+    renderSessions();
+    renderRecents();
+    renderMacros();
+    renderSftp();
+    renderTabs();
+    refreshMcpButton().catch(() => {});
+}
+
 function applyLayout() {
     $('#app').style.setProperty('--side-w', prefs.sideWidth + 'px');
     $('#app').classList.toggle('side-collapsed', prefs.sideCollapsed);
@@ -125,12 +141,12 @@ function fmtSize(n) {
     return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i];
 }
 
-function ago(t) {
-    const s = Math.round((Date.now() - t) / 1000);
-    if (s < 60) return '방금';
-    if (s < 3600) return Math.floor(s / 60) + '분 전';
-    if (s < 86400) return Math.floor(s / 3600) + '시간 전';
-    return Math.floor(s / 86400) + '일 전';
+function ago(ts) {
+    const s = Math.round((Date.now() - ts) / 1000);
+    if (s < 60) return t('time.now');
+    if (s < 3600) return t('time.min', {n: Math.floor(s / 60)});
+    if (s < 86400) return t('time.hour', {n: Math.floor(s / 3600)});
+    return t('time.day', {n: Math.floor(s / 86400)});
 }
 
 const targetOf = (s) => s.kind === 'serial'
@@ -158,12 +174,12 @@ addEventListener('click', hideCtx);
 addEventListener('blur', hideCtx);
 
 /** modal(title, html, opts) — onOk(root) returns false to keep it open. Resolves to onOk's result or null. */
-function modal(title, bodyHtml, {okText = '확인', onOk, onMount, onCancel, wide = false, danger = false} = {}) {
+function modal(title, bodyHtml, {okText = t('common.ok'), onOk, onMount, onCancel, wide = false, danger = false} = {}) {
     return new Promise((resolve) => {
         const bg = document.createElement('div');
         bg.className = 'modal-bg';
         bg.innerHTML = `<div class="modal${wide ? ' wide' : ''}" role="dialog" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${bodyHtml}
-            <div class="btns"><button data-x="cancel">취소</button><button class="primary${danger ? ' danger-btn' : ''}" data-x="ok">${esc(okText)}</button></div></div>`;
+            <div class="btns"><button data-x="cancel">${t('common.cancel')}</button><button class="primary${danger ? ' danger-btn' : ''}" data-x="ok">${esc(okText)}</button></div></div>`;
         if (danger) bg.querySelector('[data-x=ok]').style.cssText = 'background:var(--bad);border-color:var(--bad)';
         $('#modal-root').appendChild(bg);
         const root = bg.firstElementChild;
@@ -190,10 +206,10 @@ function modal(title, bodyHtml, {okText = '확인', onOk, onMount, onCancel, wid
 
 async function promptPassword(title, canSave) {
     return modal(title, `<div class="f">
-        <label>비밀번호</label><input type="password" name="pw" autofocus/>
-        ${canSave ? '<span></span><label class="chk"><input type="checkbox" name="save"/> 비밀번호 저장 (Windows 계정으로 암호화)</label>' : ''}
+        <label>${t('pw.label')}</label><input type="password" name="pw" autofocus/>
+        ${canSave ? `<span></span><label class="chk"><input type="checkbox" name="save"/> ${t('pw.save')}</label>` : ''}
     </div>`, {
-        okText: '접속',
+        okText: t('pw.connect'),
         onOk: (r) => {
             const input = r.querySelector('[name=pw]');
             if (!input.value) { input.focus(); return false; } // an empty Enter shouldn't count as cancel
@@ -228,8 +244,8 @@ function renderSessions() {
     const list = state.sessions.filter((s) => !q || [s.name, s.host, s.user, s.folder, s.comPort].join(' ').toLowerCase().includes(q));
     if (!list.length) {
         tree.innerHTML = state.sessions.length
-            ? `<div class="empty">${icon('search')}<span>"${esc(q)}"와 일치하는 세션이 없습니다</span></div>`
-            : `<div class="empty">${icon('terminal')}<span>저장된 세션이 없습니다</span><button id="empty-add" class="primary">${icon('plus')}새 세션 만들기</button></div>`;
+            ? `<div class="empty">${icon('search')}<span>${esc(t('sess.noMatch', {q}))}</span></div>`
+            : `<div class="empty">${icon('terminal')}<span>${t('sess.none')}</span><button id="empty-add" class="primary">${icon('plus')}${t('sess.create')}</button></div>`;
         $('#empty-add')?.addEventListener('click', () => editSession(null));
         return;
     }
@@ -248,7 +264,7 @@ function renderSessions() {
             const n = liveCount(s.id);
             html += `<div class="item${f ? ' indent' : ''}${state.selSession === s.id ? ' sel' : ''}${n ? ' live' : ''}" data-id="${s.id}" title="${esc(targetOf(s))}">
                 <span class="ic">${icon(s.kind === 'serial' ? 'serial' : 'terminal')}</span><span class="nm">${highlight(s.name, q)}</span>
-                ${n ? `<span class="live-n" title="연결된 탭 ${n}개">●${n > 1 ? n : ''}</span>` : `<span class="sub">${esc(targetOf(s))}</span>`}</div>`;
+                ${n ? `<span class="live-n" title="${t('sess.liveTabs', {n})}">●${n > 1 ? n : ''}</span>` : `<span class="sub">${esc(targetOf(s))}</span>`}</div>`;
         }
     }
     tree.innerHTML = html;
@@ -300,16 +316,16 @@ $('#sess-tree').addEventListener('dblclick', (e) => {
 $('#sess-tree').addEventListener('contextmenu', (e) => {
     e.preventDefault();
     const it = e.target.closest('.item');
-    if (!it) return ctxMenu(e.clientX, e.clientY, [{label: '새 세션', icon: 'plus', fn: () => editSession(null)}]);
+    if (!it) return ctxMenu(e.clientX, e.clientY, [{label: t('sess.new'), icon: 'plus', fn: () => editSession(null)}]);
     const s = state.sessions.find((x) => x.id === it.dataset.id);
     selectSession(s.id);
     ctxMenu(e.clientX, e.clientY, [
-        {label: '연결', icon: 'play', fn: () => openSession(s)},
-        {label: '편집', icon: 'gear', fn: () => editSession(s)},
-        {label: '복제', icon: 'plus', fn: () => editSession({...s, id: '', name: s.name + ' 복사본', hasPassword: false})},
+        {label: t('common.connect'), icon: 'play', fn: () => openSession(s)},
+        {label: t('common.edit'), icon: 'gear', fn: () => editSession(s)},
+        {label: t('common.duplicate'), icon: 'plus', fn: () => editSession({...s, id: '', name: s.name + ' ' + t('sess.copySuffix'), hasPassword: false})},
         '-',
-        {label: '삭제', icon: 'close', danger: true, fn: async () => {
-            if (await modal('세션 삭제', `<p>"${esc(s.name)}" 세션을 삭제할까요? 저장된 비밀번호도 함께 지워집니다.</p>`, {okText: '삭제', danger: true})) {
+        {label: t('common.delete'), icon: 'close', danger: true, fn: async () => {
+            if (await modal(t('sess.deleteTitle'), `<p>${esc(t('sess.deleteBody', {name: s.name}))}</p>`, {okText: t('common.delete'), danger: true})) {
                 await App.DeleteSession(s.id);
                 prefs.recents = prefs.recents.filter((r) => r.id !== s.id);
                 savePrefs();
@@ -326,33 +342,33 @@ async function editSession(s) {
     s = {kind: 'ssh', port: 22, baud: 9600, dataBits: 8, parity: 'N', stopBits: '1', ...s};
     const folders = [...new Set(state.sessions.map((x) => x.folder).filter(Boolean))];
     const body = `<div class="f">
-        <label>종류</label><div class="seg" data-seg="kind"><button type="button" data-v="ssh">SSH</button><button type="button" data-v="serial">시리얼 (COM)</button></div>
-        <label>이름</label><input name="name" value="${esc(s.name)}" placeholder="비우면 호스트명"/>
-        <label>폴더</label><input name="folder" value="${esc(s.folder)}" list="folders" placeholder="예: 본사 장비"/>
+        <label>${t('f.kind')}</label><div class="seg" data-seg="kind"><button type="button" data-v="ssh">SSH</button><button type="button" data-v="serial">${t('f.serial')}</button></div>
+        <label>${t('common.name')}</label><input name="name" value="${esc(s.name)}" placeholder="${t('f.namePh')}"/>
+        <label>${t('f.folder')}</label><input name="folder" value="${esc(s.folder)}" list="folders" placeholder="${t('f.folderPh')}"/>
         <datalist id="folders">${folders.map((f) => `<option value="${esc(f)}">`).join('')}</datalist>
 
-        <h4 class="ssh">연결</h4>
-        <label class="ssh">호스트</label><input class="ssh" name="host" value="${esc(s.host)}" autofocus placeholder="예: 10.0.0.1"/>
-        <label class="ssh">포트</label><input class="ssh" name="port" type="number" value="${s.port || 22}"/>
-        <label class="ssh">사용자</label><input class="ssh" name="user" value="${esc(s.user)}"/>
-        <h4 class="ssh">인증</h4>
-        <label class="ssh">비밀번호</label><input class="ssh" name="pw" type="password" placeholder="${s.hasPassword ? '저장됨 · 바꿀 때만 입력' : '비우면 접속할 때 물어봄'}"/>
-        <span class="ssh"></span><label class="ssh chk"><input type="checkbox" name="save" ${s.hasPassword || isNew ? 'checked' : ''}/> 비밀번호 저장 (Windows 계정으로 암호화)</label>
-        <label class="ssh">개인키</label><div class="ssh inline"><input name="keyPath" value="${esc(s.keyPath)}" placeholder="선택 사항"/><button type="button" data-x="key">찾기</button></div>
-        <span class="ssh"></span><label class="ssh chk"><input type="checkbox" name="legacy" ${s.legacy ? 'checked' : ''}/> 구형 알고리즘 허용 (오래된 스위치·방화벽)</label>
+        <h4 class="ssh">${t('f.secConn')}</h4>
+        <label class="ssh">${t('f.host')}</label><input class="ssh" name="host" value="${esc(s.host)}" autofocus placeholder="${t('f.hostPh')}"/>
+        <label class="ssh">${t('common.port')}</label><input class="ssh" name="port" type="number" value="${s.port || 22}"/>
+        <label class="ssh">${t('f.user')}</label><input class="ssh" name="user" value="${esc(s.user)}"/>
+        <h4 class="ssh">${t('f.secAuth')}</h4>
+        <label class="ssh">${t('pw.label')}</label><input class="ssh" name="pw" type="password" placeholder="${s.hasPassword ? t('f.pwSaved') : t('f.pwAsk')}"/>
+        <span class="ssh"></span><label class="ssh chk"><input type="checkbox" name="save" ${s.hasPassword || isNew ? 'checked' : ''}/> ${t('pw.save')}</label>
+        <label class="ssh">${t('f.key')}</label><div class="ssh inline"><input name="keyPath" value="${esc(s.keyPath)}" placeholder="${t('f.optional')}"/><button type="button" data-x="key">${t('common.browse')}</button></div>
+        <span class="ssh"></span><label class="ssh chk"><input type="checkbox" name="legacy" ${s.legacy ? 'checked' : ''}/> ${t('f.legacy')}</label>
 
-        <h4 class="ser">포트 설정</h4>
-        <label class="ser">포트</label><div class="ser inline"><select name="comPort"></select><button type="button" data-x="scan" title="포트 다시 찾기">${icon('refresh')}</button></div>
-        <label class="ser">속도</label><input class="ser" name="baud" list="bauds" value="${s.baud || 9600}"/>
+        <h4 class="ser">${t('f.secPort')}</h4>
+        <label class="ser">${t('common.port')}</label><div class="ser inline"><select name="comPort"></select><button type="button" data-x="scan" title="${t('f.rescan')}">${icon('refresh')}</button></div>
+        <label class="ser">${t('f.baud')}</label><input class="ser" name="baud" list="bauds" value="${s.baud || 9600}"/>
         <datalist id="bauds">${BAUDS.map((b) => `<option value="${b}">`).join('')}</datalist>
-        <label class="ser">데이터 비트</label><select class="ser" name="dataBits">${[8, 7, 6, 5].map((b) => `<option ${s.dataBits === b ? 'selected' : ''}>${b}</option>`).join('')}</select>
-        <label class="ser">패리티</label><select class="ser" name="parity"><option value="N">없음</option><option value="E">짝수</option><option value="O">홀수</option></select>
-        <label class="ser">정지 비트</label><select class="ser" name="stopBits"><option>1</option><option>2</option></select>
+        <label class="ser">${t('f.dataBits')}</label><select class="ser" name="dataBits">${[8, 7, 6, 5].map((b) => `<option ${s.dataBits === b ? 'selected' : ''}>${b}</option>`).join('')}</select>
+        <label class="ser">${t('f.parity')}</label><select class="ser" name="parity"><option value="N">${t('f.parityN')}</option><option value="E">${t('f.parityE')}</option><option value="O">${t('f.parityO')}</option></select>
+        <label class="ser">${t('f.stopBits')}</label><select class="ser" name="stopBits"><option>1</option><option>2</option></select>
     </div>`;
 
     let kind = s.kind;
-    const saved = await modal(isNew ? '새 세션' : '세션 편집', body, {
-        okText: '저장',
+    const saved = await modal(isNew ? t('sess.new') : t('sess.edit'), body, {
+        okText: t('common.save'),
         onMount: (r) => {
             r.querySelector('[name=parity]').value = s.parity || 'N';
             r.querySelector('[name=stopBits]').value = s.stopBits || '1';
@@ -365,12 +381,12 @@ async function editSession(s) {
             sync();
             const scan = async () => {
                 const sel = r.querySelector('[name=comPort]');
-                sel.innerHTML = '<option value="">찾는 중…</option>';
+                sel.innerHTML = `<option value="">${t('f.scanning')}</option>`;
                 const ports = await App.ListSerialPorts() || [];
                 const cur = s.comPort;
                 sel.innerHTML = ports.map((p) => `<option value="${esc(p.name)}">${esc(p.label)}</option>`).join('')
-                    || '<option value="">(연결된 COM 포트 없음)</option>';
-                if (cur && !ports.some((p) => p.name === cur)) sel.insertAdjacentHTML('afterbegin', `<option value="${esc(cur)}">${esc(cur)} (연결 안 됨)</option>`);
+                    || `<option value="">${t('f.noPorts')}</option>`;
+                if (cur && !ports.some((p) => p.name === cur)) sel.insertAdjacentHTML('afterbegin', `<option value="${esc(cur)}">${esc(t('f.portMissing', {p: cur}))}</option>`);
                 if (cur) sel.value = cur;
             };
             r.querySelector('[data-x=scan]').onclick = scan;
@@ -390,19 +406,19 @@ async function editSession(s) {
                 comPort: v('comPort'), baud: parseInt(v('baud'), 10) || 9600, dataBits: parseInt(v('dataBits'), 10),
                 parity: v('parity'), stopBits: v('stopBits'),
             };
-            if (out.kind === 'ssh' && !out.host) { toast('호스트를 입력하세요', 'err'); r.querySelector('[name=host]').focus(); return false; }
-            if (out.kind === 'serial' && !out.comPort) { toast('COM 포트를 선택하세요', 'err'); return false; }
+            if (out.kind === 'ssh' && !out.host) { toast(t('sess.needHost'), 'err'); r.querySelector('[name=host]').focus(); return false; }
+            if (out.kind === 'serial' && !out.comPort) { toast(t('sess.needCom'), 'err'); return false; }
             try {
                 return await App.SaveSession(out, r.querySelector('[name=pw]').value, r.querySelector('[name=save]').checked);
             } catch (e) {
-                toast('저장하지 못했습니다: ' + e, 'err');
+                toast(t('sess.saveFailed', {e}), 'err');
                 return false;
             }
         },
     });
     if (saved) {
         state.selSession = saved.id;
-        toast(`"${saved.name}" 세션을 저장했습니다`, 'ok');
+        toast(t('sess.saved', {name: saved.name}), 'ok');
         loadSessions();
     }
 }
@@ -427,10 +443,10 @@ function renderRecents() {
         return {s: {id: '', kind: 'ssh', name: `${a.user}@${a.host}`, ...a}, adhoc: true, t: r.t};
     }).filter(Boolean).slice(0, 6);
     $('#recents').innerHTML = items.length
-        ? '<div class="rec-title">최근 접속</div>' + items.map((x, i) => `<button class="recent" data-i="${i}">
+        ? `<div class="rec-title">${t('recent.title')}</div>` + items.map((x, i) => `<button class="recent" data-i="${i}">
             <span class="ic">${icon(x.s.kind === 'serial' ? 'serial' : 'terminal')}</span><span class="nm">${esc(x.s.name)}</span>
             <span class="hint">${ago(x.t)}</span><span class="sub">${esc(targetOf(x.s))}</span></button>`).join('')
-        : '<p class="hint">왼쪽 목록에서 세션을 더블클릭하거나, 위의 빠른 접속에 <b>user@host</b>를 입력하세요.</p>';
+        : `<p class="hint">${t('recent.empty')}</p>`;
     $$('#recents .recent').forEach((b) => { b.onclick = () => { const x = items[b.dataset.i]; openSession(x.s, x.adhoc); }; });
 }
 
@@ -440,10 +456,10 @@ $('#quick').addEventListener('keydown', async (e) => {
     if (e.key === 'Escape') { e.target.value = ''; focusActive(); return; }
     if (e.key !== 'Enter') return;
     const m = e.target.value.trim().match(/^(?:([^@\s]+)@)?([^:\s]+)(?::(\d+))?$/);
-    if (!m) return toast('user@host 또는 user@host:port 형식으로 입력하세요', 'err');
+    if (!m) return toast(t('quick.format'), 'err');
     let [, user, host, port] = m;
     if (!user) {
-        const r = await modal('사용자 이름', `<div class="f"><label>사용자</label><input name="u" autofocus/><span></span><span class="hint">${esc(host)}에 접속할 계정</span></div>`, {
+        const r = await modal(t('quick.userTitle'), `<div class="f"><label>${t('f.user')}</label><input name="u" autofocus/><span></span><span class="hint">${esc(t('quick.userFor', {host}))}</span></div>`, {
             onOk: (root) => root.querySelector('[name=u]').value.trim() || false,
         });
         if (!r) return;
@@ -461,12 +477,13 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
     const pane = document.createElement('div');
     pane.className = 'pane';
     pane.innerHTML = `<div class="term"></div>
-        <div class="overlay"><div class="card"><div class="spinner"></div><div><b>접속 중</b></div>
-            <div class="target">${esc(targetOf(s))}</div><div class="sub" data-el="elapsed">0.0초</div>
-            <button data-x="cancel">취소</button></div></div>
+        <div class="overlay"><div class="card"><div class="spinner"></div><div><b data-i18n="conn.connecting"></b></div>
+            <div class="target">${esc(targetOf(s))}</div><div class="sub" data-el="elapsed"></div>
+            <button data-x="cancel" data-i18n="common.cancel"></button></div></div>
         <div class="closedbar"><span class="msg"></span>
-            <button class="primary" data-x="reconnect">${icon('refresh')}재접속 <kbd>Enter</kbd></button>
-            <button data-x="close">탭 닫기</button></div>`;
+            <button class="primary" data-x="reconnect">${icon('refresh')}<span data-i18n="conn.reconnect"></span> <kbd>Enter</kbd></button>
+            <button data-x="close" data-i18n="conn.closeTab"></button></div>`;
+    applyStatic(pane);
     $('#terms').appendChild(pane);
 
     const term = new Terminal({...termOptions(), allowProposedApi: true});
@@ -518,12 +535,12 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
         e.preventDefault();
         if (prefs.rightClickPaste && !e.shiftKey) return pasteInto(tab);
         ctxMenu(e.clientX, e.clientY, [
-            {label: '복사', fn: () => ClipboardSetText(term.getSelection())},
-            {label: '붙여넣기', fn: () => pasteInto(tab)},
-            {label: '모두 선택', fn: () => term.selectAll()},
+            {label: t('term.copy'), fn: () => ClipboardSetText(term.getSelection())},
+            {label: t('term.paste'), fn: () => pasteInto(tab)},
+            {label: t('term.selectAll'), fn: () => term.selectAll()},
             '-',
-            {label: '찾기', icon: 'search', fn: () => openFind(tab)},
-            {label: '화면 지우기', fn: () => term.clear()},
+            {label: t('common.find'), icon: 'search', fn: () => openFind(tab)},
+            {label: t('common.clear'), fn: () => term.clear()},
         ]);
     });
 
@@ -536,7 +553,7 @@ async function pasteInto(tab) {
     if (!text) return;
     const lines = text.replace(/\r?\n$/, '').split(/\r?\n/).length;
     if (lines > 1 && prefs.confirmMultiline) {
-        const ok = await modal('여러 줄 붙여넣기', `<p>${lines}줄을 <b>${esc(tab.title)}</b>에 붙여넣습니다. 각 줄이 명령으로 실행될 수 있습니다.</p><pre>${esc(text.slice(0, 2000))}</pre>`, {okText: `${lines}줄 붙여넣기`});
+        const ok = await modal(t('paste.title'), `<p>${t('paste.body', {n: lines, name: esc(tab.title)})}</p><pre>${esc(text.slice(0, 2000))}</pre>`, {okText: t('paste.ok', {n: lines})});
         if (!ok) return;
     }
     tab.term.paste(text);
@@ -550,7 +567,8 @@ function showConnecting(tab) {
     clearInterval(tab.connTimer);
     clearTimeout(tab.connShow);
     tab.connShow = setTimeout(() => ov.classList.add('show'), 180);
-    tab.connTimer = setInterval(() => { el.textContent = ((performance.now() - t0) / 1000).toFixed(1) + '초'; }, 100);
+    tab.connTimer = setInterval(() => { el.textContent = t('conn.sec', {s: ((performance.now() - t0) / 1000).toFixed(1)}); }, 100);
+    el.textContent = t('conn.sec', {s: '0.0'});
 }
 
 function hideConnecting(tab) {
@@ -580,18 +598,18 @@ async function connectTab(tab, password = '') {
         hideConnecting(tab);
         const msg = String(err);
         if (msg.includes('NEED_PASSWORD') || msg.includes('AUTH_FAILED')) {
-            if (msg.includes('AUTH_FAILED')) term.write('\x1b[31m인증 실패\x1b[0m\r\n');
-            const r = await promptPassword(`${tab.title} 비밀번호`, !tab.adhoc);
+            if (msg.includes('AUTH_FAILED')) term.write(`\x1b[31m${t('conn.authFailed')}\x1b[0m\r\n`);
+            const r = await promptPassword(t('pw.title', {name: tab.title}), !tab.adhoc);
             if (r && r.pw) {
                 if (r.save) await App.SetSessionPassword(tab.session.id, r.pw).then(loadSessions).catch((e) => toast(String(e), 'err'));
                 return connectTab(tab, r.pw);
             }
-            return markClosed(tab, '비밀번호 입력을 취소했습니다');
+            return markClosed(tab, t('conn.pwCanceled'));
         }
-        if (msg.includes('CANCELED')) return markClosed(tab, '접속을 취소했습니다');
-        term.write(`\x1b[31m접속 실패: ${msg.replace(/\n/g, '\r\n')}\x1b[0m\r\n`);
+        if (msg.includes('CANCELED')) return markClosed(tab, t('conn.canceled'));
+        term.write(`\x1b[31m${t('conn.failed')}: ${msg.replace(/\n/g, '\r\n')}\x1b[0m\r\n`);
         reportMcp(tab, msg);
-        markClosed(tab, '접속 실패 · ' + msg.split('\n')[0]);
+        markClosed(tab, t('conn.failed') + ' · ' + msg.split('\n')[0]);
     }
 }
 
@@ -603,14 +621,14 @@ function reportMcp(tab, err) {
 }
 
 function markClosed(tab, reason) {
-    reportMcp(tab, reason || '접속 실패');
+    reportMcp(tab, reason || t('conn.failed'));
     if (tab.status === 'closed') return;
     tab.status = 'closed';
     tab.logging = false;
     hideConnecting(tab);
     if (reason) tab.term.write(`\r\n\x1b[90m── ${reason} ──\x1b[0m\r\n`);
     const bar = tab.pane.querySelector('.closedbar');
-    bar.querySelector('.msg').innerHTML = `<b>연결 끊김</b>${esc(reason || '')}`;
+    bar.querySelector('.msg').innerHTML = `<b>${t('conn.lost')}</b>${esc(reason || '')}`;
     bar.classList.add('show');
     renderTabs();
     renderSessions();
@@ -619,7 +637,7 @@ function markClosed(tab, reason) {
 
 async function closeTab(tab, force = false) {
     if (!force && prefs.confirmClose && tab.status === 'open') {
-        const ok = await modal('탭 닫기', `<p><b>${esc(tab.title)}</b> 연결을 끊고 탭을 닫을까요?</p>`, {okText: '닫기', danger: true});
+        const ok = await modal(t('tab.closeTitle'), `<p>${t('tab.closeBody', {name: esc(tab.title)})}</p>`, {okText: t('common.close'), danger: true});
         if (!ok) return;
     }
     App.Disconnect(tab.id);
@@ -668,11 +686,11 @@ function renderTabs() {
     $('#terms').classList.toggle('multi', state.multi);
     $('#btn-multi').classList.toggle('on', state.multi);
     $('#btn-log').classList.toggle('on', !!state.active?.logging);
-    $('#tabbar').innerHTML = state.tabs.map((t) => `<div class="tab${t === state.active ? ' on' : ''}" data-id="${t.id}" draggable="true" role="tab" aria-selected="${t === state.active}" title="${esc(targetOf(t.session))}">
-        ${state.multi ? `<input type="checkbox" ${t.multi ? 'checked' : ''} title="멀티 실행 대상"/>` : ''}
-        <span class="dot ${t.status}"></span><span class="t">${esc(t.title)}</span>
-        ${t.logging ? '<span class="badge rec">REC</span>' : ''}${t.bot ? `<span class="badge bot" title="${esc(t.bot)}">AI</span>` : ''}
-        <button class="x" title="닫기">${icon('close')}</button></div>`).join('');
+    $('#tabbar').innerHTML = state.tabs.map((tb) => `<div class="tab${tb === state.active ? ' on' : ''}" data-id="${tb.id}" draggable="true" role="tab" aria-selected="${tb === state.active}" title="${esc(targetOf(tb.session))}">
+        ${state.multi ? `<input type="checkbox" ${tb.multi ? 'checked' : ''} title="${t('tab.multiTarget')}"/>` : ''}
+        <span class="dot ${tb.status}"></span><span class="t">${esc(tb.title)}</span>
+        ${tb.logging ? '<span class="badge rec">REC</span>' : ''}${tb.bot ? `<span class="badge bot" title="${esc(tb.bot)}">AI</span>` : ''}
+        <button class="x" title="${t('common.close')}">${icon('close')}</button></div>`).join('');
     renderStatus();
 }
 
@@ -700,14 +718,14 @@ $('#tabbar').addEventListener('contextmenu', (e) => {
     if (!el) return;
     const tab = state.tabs.find((t) => t.id === el.dataset.id);
     ctxMenu(e.clientX, e.clientY, [
-        {label: '재접속', icon: 'refresh', fn: () => { if (tab.status === 'open') App.Disconnect(tab.id); setTimeout(() => connectTab(tab), 200); }},
-        {label: '복제', icon: 'plus', fn: () => openSession(tab.session, tab.adhoc)},
-        {label: '이름 바꾸기', fn: () => renameTab(tab)},
-        {label: '찾기', icon: 'search', fn: () => { activate(tab); openFind(tab); }},
-        {label: '화면 지우기', fn: () => tab.term.clear()},
+        {label: t('conn.reconnect'), icon: 'refresh', fn: () => { if (tab.status === 'open') App.Disconnect(tab.id); setTimeout(() => connectTab(tab), 200); }},
+        {label: t('common.duplicate'), icon: 'plus', fn: () => openSession(tab.session, tab.adhoc)},
+        {label: t('common.rename'), fn: () => renameTab(tab)},
+        {label: t('common.find'), icon: 'search', fn: () => { activate(tab); openFind(tab); }},
+        {label: t('common.clear'), fn: () => tab.term.clear()},
         '-',
-        {label: '다른 탭 모두 닫기', fn: () => state.tabs.filter((t) => t !== tab).forEach((t) => closeTab(t, true))},
-        {label: '닫기', icon: 'close', danger: true, fn: () => closeTab(tab)},
+        {label: t('tab.closeOthers'), fn: () => state.tabs.filter((x) => x !== tab).forEach((x) => closeTab(x, true))},
+        {label: t('common.close'), icon: 'close', danger: true, fn: () => closeTab(tab)},
     ]);
 });
 
@@ -766,16 +784,16 @@ new ResizeObserver(() => state.active?.fit.fit()).observe($('#terms'));
 $('#btn-multi').onclick = () => {
     state.multi = !state.multi;
     renderTabs();
-    if (state.multi) toast('멀티 실행: 입력이 체크된 모든 탭으로 전송됩니다');
+    if (state.multi) toast(t('multi.on'));
     focusActive();
 };
 $('#btn-log').onclick = async () => {
-    const t = state.active;
-    if (!t || t.status !== 'open') return toast('연결된 탭에서만 로그를 저장할 수 있습니다', 'err');
+    const tab = state.active;
+    if (!tab || tab.status !== 'open') return toast(t('log.needConn'), 'err');
     try {
-        const p = await App.SetLogging(t.id, !t.logging);
-        t.logging = !t.logging;
-        toast(t.logging ? '로그 저장 시작: ' + p : '로그 저장을 멈췄습니다', t.logging ? 'ok' : 'info');
+        const p = await App.SetLogging(tab.id, !tab.logging);
+        tab.logging = !tab.logging;
+        toast(tab.logging ? t('log.started', {p}) : t('log.stopped'), tab.logging ? 'ok' : 'info');
         renderTabs();
     } catch (e) { toast(String(e), 'err'); }
     focusActive();
@@ -794,16 +812,16 @@ function openFind(tab) {
     if (!bar) {
         bar = document.createElement('div');
         bar.className = 'findbar';
-        bar.innerHTML = `<label class="field">${icon('search')}<input placeholder="찾기" spellcheck="false"/></label>
+        bar.innerHTML = `<label class="field">${icon('search')}<input placeholder="${t('common.find')}" spellcheck="false"/></label>
             <span class="count"></span>
-            <button class="ghost icon" data-x="prev" title="이전 (Shift+Enter)">${icon('arrowUp')}</button>
-            <button class="ghost icon" data-x="next" title="다음 (Enter)">${icon('arrowDown')}</button>
-            <button class="ghost icon" data-x="close" title="닫기 (Esc)">${icon('close')}</button>`;
+            <button class="ghost icon" data-x="prev" title="${t('find.prev')}">${icon('arrowUp')}</button>
+            <button class="ghost icon" data-x="next" title="${t('find.next')}">${icon('arrowDown')}</button>
+            <button class="ghost icon" data-x="close" title="${t('find.close')}">${icon('close')}</button>`;
         tab.pane.appendChild(bar);
         const input = bar.querySelector('input');
         const count = bar.querySelector('.count');
         tab.findSub = tab.search.onDidChangeResults(({resultIndex, resultCount}) => {
-            count.textContent = resultCount ? `${resultIndex + 1}/${resultCount}` : (input.value ? '없음' : '');
+            count.textContent = resultCount ? `${resultIndex + 1}/${resultCount}` : (input.value ? t('find.none') : '');
         });
         const go = (back) => input.value && (back
             ? tab.search.findPrevious(input.value, {decorations: FIND_DECOR})
@@ -837,7 +855,7 @@ function zoom(d) {
     prefs.fontSize = d === 0 ? DEFAULT_PREFS.fontSize : Math.max(9, Math.min(28, prefs.fontSize + d));
     savePrefs();
     applyTheme();
-    toast(`글자 크기 ${prefs.fontSize}px`);
+    toast(t('zoom.size', {n: prefs.fontSize}));
 }
 
 function toggleSidebar() {
@@ -894,21 +912,20 @@ $('#resizer').addEventListener('dblclick', () => { prefs.sideWidth = DEFAULT_PRE
 // ---------------------------------------------------------------- status bar
 
 function renderStatus() {
-    const t = state.active;
-    const statusText = {open: '연결됨', connecting: '접속 중', closed: '연결 끊김'};
-    $('#sb-conn').innerHTML = t
-        ? `<span class="sb-dot ${t.status}"></span>${icon(t.kind === 'serial' ? 'serial' : 'terminal')}<span>${esc(targetOf(t.session))}</span><span>· ${statusText[t.status]}</span>${t.logging ? '<span>· 로그 저장 중</span>' : ''}`
-        : '<span>연결 없음</span>';
-    $('#sb-size').textContent = t ? `${t.term.cols}×${t.term.rows} · ${prefs.fontSize}px` : '';
+    const a = state.active;
+    $('#sb-conn').innerHTML = a
+        ? `<span class="sb-dot ${a.status}"></span>${icon(a.kind === 'serial' ? 'serial' : 'terminal')}<span>${esc(targetOf(a.session))}</span><span>· ${t('sb.' + a.status)}</span>${a.logging ? `<span>· ${t('sb.logging')}</span>` : ''}`
+        : `<span>${t('sb.none')}</span>`;
+    $('#sb-size').textContent = a ? `${a.term.cols}×${a.term.rows} · ${prefs.fontSize}px` : '';
     const n = multiTargets().length;
-    $('#sb-multi').textContent = state.multi ? `멀티 실행 · ${n}개 탭` : '';
+    $('#sb-multi').textContent = state.multi ? t('sb.multi', {n}) : '';
     $('#sb-mcp').className = 'sb-item' + (state.mcpRunning ? ' on' : '');
     $('#sb-mcp').innerHTML = state.mcpRunning ? `${icon('bot')}MCP` : '';
     const xs = [...state.transfers.values()];
     if (xs.length) {
         const done = xs.reduce((a, x) => a + x.done, 0);
         const total = xs.reduce((a, x) => a + (x.total || 0), 0);
-        $('#sb-xfer').innerHTML = `${icon('upload')}전송 ${xs.length}개${total ? ` · ${Math.round((done / total) * 100)}%` : ''}`;
+        $('#sb-xfer').innerHTML = `${icon('upload')}${t('sb.xfer', {n: xs.length})}${total ? ` · ${Math.round((done / total) * 100)}%` : ''}`;
     } else {
         $('#sb-xfer').textContent = '';
     }
@@ -967,18 +984,18 @@ function renderCrumbs(path) {
 
 function renderSftp() {
     const {connId, path, entries, loading, error} = state.sftp;
-    const t = state.tabs.find((x) => x.id === connId);
-    const target = t && targetOf(t.session);
-    $('#sftp-host').innerHTML = t ? `${icon('terminal')}<b>${esc(t.title)}</b>${target !== t.title ? `<span>${esc(target)}</span>` : ''}` : '';
+    const tb = state.tabs.find((x) => x.id === connId);
+    const target = tb && targetOf(tb.session);
+    $('#sftp-host').innerHTML = tb ? `${icon('terminal')}<b>${esc(tb.title)}</b>${target !== tb.title ? `<span>${esc(target)}</span>` : ''}` : '';
     $('#sftp-loading').classList.toggle('hidden', !loading);
     renderCrumbs(connId ? path : '');
     const list = $('#sftp-list');
     if (!connId) {
-        list.innerHTML = `<div class="empty">${icon('folder')}<span>연결된 SSH 탭을 선택하면<br>파일 목록이 여기에 표시됩니다</span></div>`;
+        list.innerHTML = `<div class="empty">${icon('folder')}<span>${t('sftp.pick')}</span></div>`;
         return;
     }
     if (error) {
-        list.innerHTML = `<div class="empty">${icon('alert')}<span>${esc(error)}</span><button id="sftp-retry">${icon('refresh')}다시 시도</button></div>`;
+        list.innerHTML = `<div class="empty">${icon('alert')}<span>${esc(error)}</span><button id="sftp-retry">${icon('refresh')}${t('common.retry')}</button></div>`;
         $('#sftp-retry').onclick = () => loadSftp(path);
         return;
     }
@@ -989,7 +1006,7 @@ function renderSftp() {
     list.innerHTML = entries.length ? entries.map((e, i) => `<div class="item ${e.isDir ? 'dir' : 'file'}" data-i="${i}" title="${esc(e.name)}\n${esc(e.mode)}  ${new Date(e.modTime * 1000).toLocaleString()}">
         <span class="ic">${icon(e.isDir ? 'folder' : e.isLink ? 'link' : 'file')}</span><span class="nm">${esc(e.name)}</span>
         <span class="sub">${e.isDir ? '' : fmtSize(e.size)}</span></div>`).join('')
-        : `<div class="empty">${icon('folderOpen')}<span>빈 폴더<br>파일을 끌어다 놓으면 업로드합니다</span></div>`;
+        : `<div class="empty">${icon('folderOpen')}<span>${t('sftp.emptyDir')}</span></div>`;
 }
 
 const joinPath = (dir, name) => (dir === '/' ? '' : dir.replace(/\/$/, '')) + '/' + name;
@@ -1035,19 +1052,19 @@ $('#sftp-list').addEventListener('contextmenu', (e) => {
     const p = joinPath(state.sftp.path, en.name);
     const fail = (err) => toast(String(err), 'err');
     const items = [];
-    if (en.isDir) items.push({label: '열기', icon: 'folderOpen', fn: () => loadSftp(p)});
-    else items.push({label: '다운로드', icon: 'arrowDown', fn: () => App.SftpDownload(id, p).catch(fail)});
-    items.push({label: '경로 복사', fn: () => { ClipboardSetText(p); toast('경로를 복사했습니다', 'ok'); }});
-    items.push({label: '이름 바꾸기', fn: async () => {
-        const nn = await modal('이름 바꾸기', `<div class="f"><label>새 이름</label><input name="n" value="${esc(en.name)}" autofocus/></div>`, {
+    if (en.isDir) items.push({label: t('sftp.open'), icon: 'folderOpen', fn: () => loadSftp(p)});
+    else items.push({label: t('sftp.download'), icon: 'arrowDown', fn: () => App.SftpDownload(id, p).catch(fail)});
+    items.push({label: t('sftp.copyPath'), fn: () => { ClipboardSetText(p); toast(t('sftp.pathCopied'), 'ok'); }});
+    items.push({label: t('common.rename'), fn: async () => {
+        const nn = await modal(t('common.rename'), `<div class="f"><label>${t('sftp.newName')}</label><input name="n" value="${esc(en.name)}" autofocus/></div>`, {
             onOk: (r) => r.querySelector('[name=n]').value.trim() || false,
         });
         if (nn && nn !== en.name) App.SftpRename(id, p, joinPath(state.sftp.path, nn)).then(() => loadSftp(state.sftp.path)).catch(fail);
     }});
     items.push('-');
-    items.push({label: en.isDir ? '삭제 (빈 폴더만)' : '삭제', icon: 'close', danger: true, fn: async () => {
-        if (await modal('삭제', `<p><b>${esc(p)}</b>를 서버에서 삭제할까요? 되돌릴 수 없습니다.</p>`, {okText: '삭제', danger: true})) {
-            App.SftpRemove(id, p, en.isDir).then(() => { toast(`${en.name} 삭제됨`, 'ok'); loadSftp(state.sftp.path); }).catch(fail);
+    items.push({label: en.isDir ? t('sftp.deleteEmpty') : t('common.delete'), icon: 'close', danger: true, fn: async () => {
+        if (await modal(t('common.delete'), `<p>${t('sftp.deleteBody', {p: esc(p)})}</p>`, {okText: t('common.delete'), danger: true})) {
+            App.SftpRemove(id, p, en.isDir).then(() => { toast(t('sftp.deleted', {name: en.name}), 'ok'); loadSftp(state.sftp.path); }).catch(fail);
         }
     }});
     ctxMenu(e.clientX, e.clientY, items);
@@ -1057,14 +1074,14 @@ $('#sftp-refresh').onclick = () => state.sftp.connId && loadSftp(state.sftp.path
 $('#sftp-upload').onclick = () => state.sftp.connId && App.SftpUploadDialog(state.sftp.connId, state.sftp.path).catch((err) => toast(String(err), 'err'));
 $('#sftp-mkdir').onclick = async () => {
     if (!state.sftp.connId) return;
-    const n = await modal('새 폴더', `<div class="f"><label>이름</label><input name="n" autofocus/><span></span><span class="hint">${esc(state.sftp.path)} 안에 만듭니다</span></div>`, {
+    const n = await modal(t('sftp.newFolder'), `<div class="f"><label>${t('common.name')}</label><input name="n" autofocus/><span></span><span class="hint">${esc(t('sftp.createIn', {p: state.sftp.path}))}</span></div>`, {
         onOk: (r) => r.querySelector('[name=n]').value.trim() || false,
     });
     if (n) App.SftpMkdir(state.sftp.connId, joinPath(state.sftp.path, n)).then(() => loadSftp(state.sftp.path)).catch((err) => toast(String(err), 'err'));
 };
 
 OnFileDrop((x, y, paths) => {
-    if (!state.sftp.connId || $('#p-sftp').classList.contains('hidden')) return toast('SFTP 패널을 열고 연결된 SSH 탭에 끌어다 놓으세요', 'err');
+    if (!state.sftp.connId || $('#p-sftp').classList.contains('hidden')) return toast(t('sftp.dropHint'), 'err');
     App.SftpUploadPaths(state.sftp.connId, state.sftp.path, paths).catch((err) => toast(String(err), 'err'));
 }, true);
 
@@ -1073,7 +1090,7 @@ EventsOn('sftp:progress', (p) => {
     if (p.finish) {
         state.transfers.delete(key);
         if (p.error) toast(`${p.name}: ${p.error}`, 'err');
-        else toast(`${p.name} 전송 완료`, 'ok');
+        else toast(t('sftp.done', {name: p.name}), 'ok');
         if (p.connId === state.sftp.connId) loadSftp(state.sftp.path);
     } else {
         state.transfers.set(key, p);
@@ -1096,31 +1113,31 @@ async function loadMacros() {
 function renderMacros() {
     $('#macro-list').innerHTML = state.macros.length ? state.macros.map((m) => `<div class="item" data-id="${m.id}" title="${esc(m.body)}">
         <span class="ic">${icon('bolt')}</span><span class="nm">${esc(m.name)}</span>
-        <span class="sub">${m.body.split('\n').filter(Boolean).length}줄</span><button class="run" title="실행">${icon('play')}실행</button></div>`).join('')
-        : `<div class="empty">${icon('bolt')}<span>자주 쓰는 명령 묶음을<br>매크로로 저장해 두세요</span><button id="macro-empty-add" class="primary">${icon('plus')}새 매크로</button></div>`;
+        <span class="sub">${t('macro.lines', {n: m.body.split('\n').filter(Boolean).length})}</span><button class="run" title="${t('common.run')}">${icon('play')}${t('common.run')}</button></div>`).join('')
+        : `<div class="empty">${icon('bolt')}<span>${t('macro.empty')}</span><button id="macro-empty-add" class="primary">${icon('plus')}${t('macro.new')}</button></div>`;
     $('#macro-empty-add')?.addEventListener('click', () => editMacro(null));
 }
 
 function runMacro(m) {
     const targets = state.multi ? multiTargets() : (state.active?.status === 'open' ? [state.active.id] : []);
-    if (!targets.length) return toast('실행할 연결된 탭이 없습니다', 'err');
+    if (!targets.length) return toast(t('macro.noTarget'), 'err');
     App.RunMacro(targets, m.body, m.delayMs || 0);
-    toast(`"${m.name}" 실행 → ${targets.length}개 탭`, 'ok');
+    toast(t('macro.ran', {name: m.name, n: targets.length}), 'ok');
     focusActive();
 }
 
 async function editMacro(m) {
     m = {name: '', body: '', delayMs: 300, ...m};
-    const saved = await modal(m.id ? '매크로 편집' : '새 매크로', `<div class="f">
-        <label>이름</label><input name="name" value="${esc(m.name)}" autofocus placeholder="예: 기본 점검"/>
-        <label class="full">명령 (한 줄에 하나씩, 줄마다 Enter를 보냅니다)</label>
+    const saved = await modal(m.id ? t('macro.edit') : t('macro.new'), `<div class="f">
+        <label>${t('common.name')}</label><input name="name" value="${esc(m.name)}" autofocus placeholder="${t('macro.namePh')}"/>
+        <label class="full">${t('macro.body')}</label>
         <textarea class="full" name="body" rows="8" spellcheck="false" placeholder="show version&#10;show interface brief">${esc(m.body)}</textarea>
-        <label>줄 간격</label><div class="inline"><input name="delay" type="number" min="0" step="100" value="${m.delayMs}"/><span class="hint">ms</span></div>
+        <label>${t('macro.delay')}</label><div class="inline"><input name="delay" type="number" min="0" step="100" value="${m.delayMs}"/><span class="hint">ms</span></div>
     </div>`, {
-        okText: '저장',
+        okText: t('common.save'),
         onOk: async (r) => {
             const out = {...m, name: r.querySelector('[name=name]').value.trim(), body: r.querySelector('[name=body]').value, delayMs: parseInt(r.querySelector('[name=delay]').value, 10) || 0};
-            if (!out.name) { toast('이름을 입력하세요', 'err'); return false; }
+            if (!out.name) { toast(t('macro.needName'), 'err'); return false; }
             return App.SaveMacro(out);
         },
     });
@@ -1142,10 +1159,10 @@ $('#macro-list').addEventListener('contextmenu', (e) => {
     if (!it) return;
     const m = state.macros.find((x) => x.id === it.dataset.id);
     ctxMenu(e.clientX, e.clientY, [
-        {label: '실행', icon: 'play', fn: () => runMacro(m)},
-        {label: '편집', icon: 'gear', fn: () => editMacro(m)},
+        {label: t('common.run'), icon: 'play', fn: () => runMacro(m)},
+        {label: t('common.edit'), icon: 'gear', fn: () => editMacro(m)},
         '-',
-        {label: '삭제', icon: 'close', danger: true, fn: async () => { await App.DeleteMacro(m.id); loadMacros(); }},
+        {label: t('common.delete'), icon: 'close', danger: true, fn: async () => { await App.DeleteMacro(m.id); loadMacros(); }},
     ]);
 });
 
@@ -1175,35 +1192,43 @@ function schemePreview(name) {
         + `<div class="swatches">${['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'].map((k) => `<i style="background:${c[k]}"></i>`).join('')}</div></div>`;
 }
 
-async function settingsDialog() {
+async function settingsDialog(before = null) {
     if ($('.modal-bg')) return;
-    const before = JSON.stringify(prefs);
+    before = before ?? JSON.stringify(prefs); // kept across a language re-render so Cancel still reverts
     const seg = (key, opts) => `<div class="seg" data-pref="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(prefs[key]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     const chk = (key, label) => `<span></span><label class="chk"><input type="checkbox" data-pref="${key}" ${prefs[key] ? 'checked' : ''}/> ${label}</label>`;
     const body = `<div class="f">
-        <h4>화면</h4>
-        <label>앱 테마</label>${seg('appTheme', [['system', '시스템'], ['dark', '다크'], ['light', '라이트']])}
-        <h4>터미널</h4>
-        <label>색 테마</label><select data-pref="termScheme"><option value="auto">자동 (앱 테마 따라감)</option>${Object.keys(SCHEMES).map((k) => `<option ${prefs.termScheme === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select>
+        <h4>${t('set.secView')}</h4>
+        <label>${t('set.lang')}</label><select data-pref="lang"><option value="auto" ${prefs.lang === 'auto' ? 'selected' : ''}>${t('set.langAuto')}</option>${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${prefs.lang === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        <label>${t('set.theme')}</label>${seg('appTheme', [['system', t('set.system')], ['dark', t('set.dark')], ['light', t('set.light')]])}
+        <h4>${t('set.secTerm')}</h4>
+        <label>${t('set.scheme')}</label><select data-pref="termScheme"><option value="auto">${t('set.schemeAuto')}</option>${Object.keys(SCHEMES).map((k) => `<option ${prefs.termScheme === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select>
         <div class="full" id="scheme-preview">${schemePreview(prefs.termScheme)}</div>
-        <label>글꼴</label><select data-pref="fontFamily">${[...new Set([prefs.fontFamily, ...FONTS])].map((f) => `<option ${prefs.fontFamily === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>
-        <label>글자 크기</label><div class="inline"><input type="range" min="9" max="28" step="1" data-pref="fontSize" value="${prefs.fontSize}"/><output class="mono">${prefs.fontSize}px</output></div>
-        <label>줄 간격</label><div class="inline"><input type="range" min="1" max="1.6" step="0.05" data-pref="lineHeight" value="${prefs.lineHeight}"/><output class="mono">${prefs.lineHeight}</output></div>
-        <label>커서</label><div class="inline">${seg('cursorStyle', [['block', '블록'], ['bar', '막대'], ['underline', '밑줄']])}<label class="chk"><input type="checkbox" data-pref="cursorBlink" ${prefs.cursorBlink ? 'checked' : ''}/> 깜빡임</label></div>
-        <label>스크롤백</label><div class="inline"><input type="number" min="1000" max="200000" step="1000" data-pref="scrollback" value="${prefs.scrollback}"/><span class="hint">줄</span></div>
-        <h4>동작</h4>
-        ${chk('copyOnSelect', '드래그로 선택하면 바로 복사')}
-        ${chk('rightClickPaste', '우클릭으로 붙여넣기 (Shift+우클릭은 메뉴)')}
-        ${chk('confirmMultiline', '여러 줄을 붙여넣기 전에 확인')}
-        ${chk('confirmClose', '연결된 탭을 닫기 전에 확인')}
+        <label>${t('set.font')}</label><select data-pref="fontFamily">${[...new Set([prefs.fontFamily, ...FONTS])].map((f) => `<option ${prefs.fontFamily === f ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select>
+        <label>${t('set.fontSize')}</label><div class="inline"><input type="range" min="9" max="28" step="1" data-pref="fontSize" value="${prefs.fontSize}"/><output class="mono">${prefs.fontSize}px</output></div>
+        <label>${t('set.lineHeight')}</label><div class="inline"><input type="range" min="1" max="1.6" step="0.05" data-pref="lineHeight" value="${prefs.lineHeight}"/><output class="mono">${prefs.lineHeight}</output></div>
+        <label>${t('set.cursor')}</label><div class="inline">${seg('cursorStyle', [['block', t('set.block')], ['bar', t('set.bar')], ['underline', t('set.underline')]])}<label class="chk"><input type="checkbox" data-pref="cursorBlink" ${prefs.cursorBlink ? 'checked' : ''}/> ${t('set.blink')}</label></div>
+        <label>${t('set.scrollback')}</label><div class="inline"><input type="number" min="1000" max="200000" step="1000" data-pref="scrollback" value="${prefs.scrollback}"/><span class="hint">${t('set.lines')}</span></div>
+        <h4>${t('set.secBehavior')}</h4>
+        ${chk('copyOnSelect', t('set.copyOnSelect'))}
+        ${chk('rightClickPaste', t('set.rightClickPaste'))}
+        ${chk('confirmMultiline', t('set.confirmMultiline'))}
+        ${chk('confirmClose', t('set.confirmClose'))}
     </div>`;
-    const ok = await modal('설정', body, {
-        okText: '저장',
+    const ok = await modal(t('set.title'), body, {
+        okText: t('common.save'),
         wide: true,
         onMount: (r) => {
             const update = (key, raw) => {
                 const cur = DEFAULT_PREFS[key];
                 prefs[key] = typeof cur === 'number' ? Number(raw) : typeof cur === 'boolean' ? !!raw : raw;
+                if (key === 'lang') {
+                    // Re-open the dialog so its own labels switch language too.
+                    applyLanguage();
+                    r.closest('.modal-bg').remove();
+                    settingsDialog(before);
+                    return;
+                }
                 applyTheme();
                 r.querySelector('#scheme-preview').innerHTML = schemePreview(prefs.termScheme);
             };
@@ -1221,9 +1246,9 @@ async function settingsDialog() {
                 });
             });
         },
-        onCancel: () => { prefs = JSON.parse(before); applyTheme(); },
+        onCancel: () => { prefs = JSON.parse(before); applyLanguage(); applyTheme(); },
     });
-    if (ok) { savePrefs(); toast('설정을 저장했습니다', 'ok'); }
+    if (ok) { savePrefs(); toast(t('set.saved'), 'ok'); }
 }
 $('#btn-settings').onclick = settingsDialog;
 
@@ -1232,8 +1257,8 @@ $('#btn-settings').onclick = settingsDialog;
 EventsOn('mcp:open', async ({connId, sessionId}) => {
     let s = state.sessions.find((x) => x.id === sessionId);
     if (!s) { await loadSessions(); s = state.sessions.find((x) => x.id === sessionId); }
-    if (!s) return App.ReportOpenResult(connId, '세션 없음');
-    toast(`AI가 "${s.name}" 세션을 엽니다`);
+    if (!s) return App.ReportOpenResult(connId, t('mcp.noSession'));
+    toast(t('mcp.opening', {name: s.name}));
     openSession(s, false, connId, true);
 });
 EventsOn('mcp:close', (id) => {
@@ -1255,34 +1280,34 @@ async function refreshMcpButton() {
     const info = await App.GetMCPInfo();
     state.mcpRunning = info.running;
     $('#btn-mcp').classList.toggle('on', info.running);
-    $('#btn-mcp').title = info.running ? `MCP 서버 실행 중 (${info.url})` : 'MCP 서버 꺼짐';
+    $('#btn-mcp').title = info.running ? t('mcp.running', {url: info.url}) : t('mcp.off');
     renderStatus();
 }
 
 async function mcpDialog() {
     let info = await App.GetMCPInfo();
-    await modal('MCP 연동', `<div class="f">
-        <span></span><label class="chk"><input type="checkbox" name="on" ${info.enabled ? 'checked' : ''}/> MCP 서버 켜기 (127.0.0.1 전용)</label>
-        <label>포트</label><input name="port" type="number" value="${info.port}"/>
-        <label>상태</label><span>${info.running ? '<b style="color:var(--ok)">실행 중</b> <span class="mono">' + esc(info.url) + '</span>' : '꺼짐'}</span>
-        ${info.command ? `<label class="full">Claude Code 등록 명령 (토큰 포함 · 다른 사람과 공유하지 마세요)</label>
+    await modal(t('mcp.title'), `<div class="f">
+        <span></span><label class="chk"><input type="checkbox" name="on" ${info.enabled ? 'checked' : ''}/> ${t('mcp.enable')}</label>
+        <label>${t('common.port')}</label><input name="port" type="number" value="${info.port}"/>
+        <label>${t('mcp.status')}</label><span>${info.running ? `<b style="color:var(--ok)">${t('mcp.statusOn')}</b> <span class="mono">${esc(info.url)}</span>` : t('mcp.statusOff')}</span>
+        ${info.command ? `<label class="full">${t('mcp.cmdLabel')}</label>
         <textarea class="full" name="cmd" rows="3" readonly>${esc(info.command)}</textarea>
-        <span></span><div class="inline"><button type="button" data-x="copy">명령 복사</button><button type="button" data-x="regen">토큰 재발급</button></div>` : ''}
-        <p class="full hint">AI가 저장된 세션을 탭으로 열고 명령을 실행해 결과를 읽습니다. 저장된 비밀번호는 AI에 전달되지 않습니다.</p>
+        <span></span><div class="inline"><button type="button" data-x="copy">${t('mcp.copyCmd')}</button><button type="button" data-x="regen">${t('mcp.regen')}</button></div>` : ''}
+        <p class="full hint">${t('mcp.hint')}</p>
     </div>`, {
-        okText: '적용',
+        okText: t('mcp.apply'),
         onMount: (r) => {
-            r.querySelector('[data-x=copy]')?.addEventListener('click', () => { ClipboardSetText(info.command); toast('명령을 복사했습니다', 'ok'); });
+            r.querySelector('[data-x=copy]')?.addEventListener('click', () => { ClipboardSetText(info.command); toast(t('mcp.copied'), 'ok'); });
             r.querySelector('[data-x=regen]')?.addEventListener('click', async () => {
                 info = await App.RegenerateMCPToken();
                 r.querySelector('[name=cmd]').value = info.command;
-                toast('토큰을 재발급했습니다. Claude Code에 다시 등록하세요.');
+                toast(t('mcp.regenDone'));
             });
         },
         onOk: async (r) => {
             try {
                 info = await App.SetMCPEnabled(r.querySelector('[name=on]').checked, parseInt(r.querySelector('[name=port]').value, 10) || 0);
-                toast(info.running ? `MCP 서버 실행 중: ${info.url}` : 'MCP 서버를 껐습니다', 'ok');
+                toast(info.running ? t('mcp.startedAt', {url: info.url}) : t('mcp.stopped'), 'ok');
             } catch (e) { toast(String(e), 'err'); return false; }
             return true;
         },
@@ -1296,10 +1321,11 @@ $('#btn-mcp').onclick = mcpDialog;
 (async () => {
     hydrateIcons();
     await loadPrefs();
+    applyLanguage();
     applyLayout();
     applyTheme();
     await Promise.all([loadSessions(), loadMacros(), refreshMcpButton()]);
     renderTabs();
     document.body.classList.remove('booting');
-    setInterval(renderRecents, 60000); // keep "n분 전" fresh
+    setInterval(renderRecents, 60000); // keep "n min ago" fresh
 })();

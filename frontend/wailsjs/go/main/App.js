@@ -82,6 +82,10 @@ export function SaveUIPrefs(arg1) {
   return window['go']['main']['App']['SaveUIPrefs'](arg1);
 }
 
+export function SetLanguage(arg1) {
+  return window['go']['main']['App']['SetLanguage'](arg1);
+}
+
 export function SetLogging(arg1, arg2) {
   return window['go']['main']['App']['SetLogging'](arg1, arg2);
 }

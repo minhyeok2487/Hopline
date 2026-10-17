@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -12,18 +12,18 @@
     <aside id="side">
         <div class="side-head">
             <span class="brand"><i data-icon="logo"></i>Hopline</span>
-            <button id="side-collapse" class="ghost icon" title="사이드바 숨기기 (Ctrl+Shift+B)"><i data-icon="sidebar"></i></button>
+            <button id="side-collapse" class="ghost icon" data-i18n-title="side.collapse"><i data-icon="sidebar"></i></button>
         </div>
         <nav class="side-tabs" role="tablist">
-            <button data-panel="sessions" class="on" role="tab">세션</button>
-            <button data-panel="sftp" role="tab">SFTP</button>
-            <button data-panel="macros" role="tab">매크로</button>
+            <button data-panel="sessions" class="on" role="tab" data-i18n="side.sessions"></button>
+            <button data-panel="sftp" role="tab" data-i18n="side.sftp"></button>
+            <button data-panel="macros" role="tab" data-i18n="side.macros"></button>
         </nav>
 
         <section id="p-sessions" class="panel">
             <div class="row">
-                <label class="field grow"><i data-icon="search"></i><input id="sess-filter" placeholder="세션 검색" spellcheck="false"/></label>
-                <button id="sess-add" class="icon" title="새 세션"><i data-icon="plus"></i></button>
+                <label class="field grow"><i data-icon="search"></i><input id="sess-filter" data-i18n-placeholder="sess.search" spellcheck="false"/></label>
+                <button id="sess-add" class="icon" data-i18n-title="sess.new"><i data-icon="plus"></i></button>
             </div>
             <div id="sess-tree" class="list" tabindex="0"></div>
         </section>
@@ -31,14 +31,14 @@
         <section id="p-sftp" class="panel hidden">
             <div id="sftp-host" class="sftp-host"></div>
             <div class="row">
-                <button id="sftp-up" class="icon" title="상위 폴더"><i data-icon="up"></i></button>
-                <div id="sftp-crumbs" class="crumbs grow" title="클릭해서 경로 입력"></div>
+                <button id="sftp-up" class="icon" data-i18n-title="sftp.up"><i data-icon="up"></i></button>
+                <div id="sftp-crumbs" class="crumbs grow" data-i18n-title="sftp.crumbs"></div>
                 <input id="sftp-path" class="grow hidden" spellcheck="false"/>
-                <button id="sftp-refresh" class="icon" title="새로고침"><i data-icon="refresh"></i></button>
+                <button id="sftp-refresh" class="icon" data-i18n-title="sftp.refresh"><i data-icon="refresh"></i></button>
             </div>
             <div class="row">
-                <button id="sftp-upload" class="grow"><i data-icon="upload"></i>업로드</button>
-                <button id="sftp-mkdir" class="grow"><i data-icon="folderPlus"></i>새 폴더</button>
+                <button id="sftp-upload" class="grow"><i data-icon="upload"></i><span data-i18n="sftp.upload"></span></button>
+                <button id="sftp-mkdir" class="grow"><i data-icon="folderPlus"></i><span data-i18n="sftp.newFolder"></span></button>
             </div>
             <div class="loadbar hidden" id="sftp-loading"><i></i></div>
             <div id="sftp-list" class="list drop"></div>
@@ -47,38 +47,38 @@
 
         <section id="p-macros" class="panel hidden">
             <div class="row">
-                <span class="hint grow">멀티 실행 중이면 체크된 탭 전체에 실행합니다</span>
-                <button id="macro-add" class="icon" title="새 매크로"><i data-icon="plus"></i></button>
+                <span class="hint grow" data-i18n="macro.hint"></span>
+                <button id="macro-add" class="icon" data-i18n-title="macro.new"><i data-icon="plus"></i></button>
             </div>
             <div id="macro-list" class="list"></div>
         </section>
     </aside>
-    <div id="resizer" title="드래그해서 너비 조절"></div>
+    <div id="resizer" data-i18n-title="resizer"></div>
 
     <main>
         <div id="topbar">
-            <button id="side-open" class="ghost icon hidden" title="사이드바 보이기 (Ctrl+Shift+B)"><i data-icon="sidebar"></i></button>
-            <label class="field quick"><i data-icon="terminal"></i><input id="quick" placeholder="빠른 접속  user@host[:port]" spellcheck="false"/></label>
+            <button id="side-open" class="ghost icon hidden" data-i18n-title="side.open"><i data-icon="sidebar"></i></button>
+            <label class="field quick"><i data-icon="terminal"></i><input id="quick" data-i18n-placeholder="quick.ph" spellcheck="false"/></label>
             <span class="grow"></span>
-            <button id="btn-multi" title="입력을 체크된 모든 탭에 동시 전송"><i data-icon="multi"></i><span>멀티 실행</span></button>
-            <button id="btn-log" title="현재 탭 로그 저장"><i data-icon="record"></i><span>로그</span></button>
-            <button id="btn-logdir" class="icon" title="로그 폴더 열기"><i data-icon="logs"></i></button>
-            <button id="btn-mcp" title="MCP 연동"><i data-icon="bot"></i><span>MCP</span></button>
-            <button id="btn-settings" class="icon" title="설정"><i data-icon="gear"></i></button>
+            <button id="btn-multi" data-i18n-title="top.multiTip"><i data-icon="multi"></i><span data-i18n="top.multi"></span></button>
+            <button id="btn-log" data-i18n-title="top.logTip"><i data-icon="record"></i><span data-i18n="top.log"></span></button>
+            <button id="btn-logdir" class="icon" data-i18n-title="top.logdir"><i data-icon="logs"></i></button>
+            <button id="btn-mcp" data-i18n-title="top.mcp"><i data-icon="bot"></i><span>MCP</span></button>
+            <button id="btn-settings" class="icon" data-i18n-title="top.settings"><i data-icon="gear"></i></button>
         </div>
         <div id="tabbar" role="tablist"></div>
         <div id="terms">
             <div id="empty">
                 <div class="empty-inner">
-                    <h2>어디에 접속할까요?</h2>
+                    <h2 data-i18n="empty.title"></h2>
                     <div id="recents"></div>
                     <dl class="keys">
-                        <dt>Ctrl+Tab</dt><dd>다음 탭</dd>
-                        <dt>Ctrl+Shift+F</dt><dd>터미널에서 찾기</dd>
-                        <dt>Ctrl + = / −</dt><dd>글자 크기</dd>
-                        <dt>Ctrl+Shift+B</dt><dd>사이드바</dd>
-                        <dt>드래그 / 우클릭</dt><dd>복사 / 붙여넣기</dd>
-                        <dt>Ctrl+,</dt><dd>설정</dd>
+                        <dt>Ctrl+Tab</dt><dd data-i18n="keys.nextTab"></dd>
+                        <dt>Ctrl+Shift+F</dt><dd data-i18n="keys.find"></dd>
+                        <dt>Ctrl + = / −</dt><dd data-i18n="keys.zoom"></dd>
+                        <dt>Ctrl+Shift+B</dt><dd data-i18n="keys.sidebar"></dd>
+                        <dt data-i18n="keys.drag"></dt><dd data-i18n="keys.copyPaste"></dd>
+                        <dt>Ctrl+,</dt><dd data-i18n="keys.settings"></dd>
                     </dl>
                 </div>
             </div>

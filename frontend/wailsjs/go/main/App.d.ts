@@ -42,6 +42,8 @@ export function SaveSession(arg1:main.Session,arg2:string,arg3:boolean):Promise<
 
 export function SaveUIPrefs(arg1:string):Promise<void>;
 
+export function SetLanguage(arg1:string):Promise<void>;
+
 export function SetLogging(arg1:string,arg2:boolean):Promise<string>;
 
 export function SetMCPEnabled(arg1:boolean,arg2:number):Promise<main.MCPInfo>;
