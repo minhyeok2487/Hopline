@@ -802,10 +802,16 @@ $('#btn-logdir').onclick = () => App.OpenLogFolder();
 
 // ---------------------------------------------------------------- find in terminal
 
-const FIND_DECOR = {
+// Match colors per theme so highlighted text stays readable (xterm needs #RRGGBB).
+const FIND_DECOR_DARK = {
     matchBackground: '#6b5a1a', matchBorder: '#c9a227', matchOverviewRuler: '#c9a227',
     activeMatchBackground: '#c9a227', activeMatchBorder: '#ffd75e', activeMatchColorOverviewRuler: '#ffd75e',
 };
+const FIND_DECOR_LIGHT = {
+    matchBackground: '#fff1a8', matchBorder: '#e0b400', matchOverviewRuler: '#e0b400',
+    activeMatchBackground: '#ffc94d', activeMatchBorder: '#c98a00', activeMatchColorOverviewRuler: '#c98a00',
+};
+const findDecor = () => (resolveScheme(prefs.termScheme, isDark()).background.match(/^#[0-7]/) ? FIND_DECOR_DARK : FIND_DECOR_LIGHT);
 
 function openFind(tab) {
     let bar = tab.pane.querySelector('.findbar');
@@ -824,8 +830,8 @@ function openFind(tab) {
             count.textContent = resultCount ? `${resultIndex + 1}/${resultCount}` : (input.value ? t('find.none') : '');
         });
         const go = (back) => input.value && (back
-            ? tab.search.findPrevious(input.value, {decorations: FIND_DECOR})
-            : tab.search.findNext(input.value, {decorations: FIND_DECOR}));
+            ? tab.search.findPrevious(input.value, {decorations: findDecor()})
+            : tab.search.findNext(input.value, {decorations: findDecor()}));
         input.addEventListener('input', () => { if (input.value) go(false); else { tab.search.clearDecorations(); count.textContent = ''; } });
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); go(e.shiftKey); }
