@@ -63,7 +63,7 @@ svg.i { width: 16px; height: 16px; flex: none; }
     transition: opacity .25s ease;
 }
 body:not(.booting) #boot { opacity: 0; pointer-events: none; }
-.boot-mark svg.i { width: 40px; height: 40px; color: var(--acc); }
+.boot-mark svg.i { width: 48px; height: 48px; }
 .boot-bar { width: 120px; height: 3px; border-radius: 2px; background: var(--bg4); overflow: hidden; }
 .boot-bar i, .loadbar i {
     display: block; height: 100%; width: 40%; background: var(--acc); border-radius: 2px;
@@ -121,7 +121,7 @@ input[type=range] { accent-color: var(--acc); padding: 0; border: 0; background:
 #resizer:hover, #resizer.drag { background: var(--acc); }
 .side-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 12px; }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: .01em; }
-.brand svg.i { color: var(--acc); }
+.brand svg.logo { width: 20px; height: 20px; }
 .side-tabs { display: flex; gap: 2px; padding: 4px 8px 0; border-bottom: 1px solid var(--line); }
 .side-tabs button {
     flex: 1; border: 0; border-radius: 0; background: transparent; color: var(--dim);

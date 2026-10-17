@@ -34,7 +34,17 @@ export function icon(name, cls = '') {
     return `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;
 }
 
-// Replace <i data-icon="name"></i> placeholders in static HTML.
+// Hopline mark: a hop arc between a source node (green) and a destination node (accent).
+export function logoMark(cls = '') {
+    return `<svg class="i logo ${cls}" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5.5 15a6.5 6.5 0 0 1 13 0" fill="none" stroke="var(--acc)" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="5.5" cy="15" r="3" fill="var(--ok)"/>
+        <circle cx="18.5" cy="15" r="2.4" fill="var(--bg2)" stroke="var(--acc)" stroke-width="1.8"/></svg>`;
+}
+
+// Replace <i data-icon="name"></i> placeholders in static HTML ("logo" = the Hopline mark).
 export function hydrateIcons(root = document) {
-    root.querySelectorAll('i[data-icon]').forEach((el) => { el.outerHTML = icon(el.dataset.icon, el.className); });
+    root.querySelectorAll('i[data-icon]').forEach((el) => {
+        el.outerHTML = el.dataset.icon === 'logo' ? logoMark(el.className) : icon(el.dataset.icon, el.className);
+    });
 }
