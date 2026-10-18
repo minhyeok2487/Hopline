@@ -14,13 +14,15 @@
   English · <a href="README.ko.md">한국어</a>
 </p>
 
-![Hopline main window](docs/screenshots/main-dark.png)
+![Claude Code driving Hopline through MCP](docs/media/hero.gif)
 
 <p align="center"><a href="docs/media/hopline-promo.mp4">▶ Watch the 30-second demo video</a></p>
 
 Hopline keeps the parts of a network engineer's terminal you use every day (saved sessions, tabs, SFTP, serial consoles, multi-exec) in a single ~16 MB executable. It is written in Go with [Wails](https://wails.io) and renders terminals with [xterm.js](https://xtermjs.org).
 
 ## Features
+
+![Hopline main window](docs/screenshots/main-dark.png)
 
 **Sessions and terminals**
 - Saved SSH and serial sessions in folders, with search and keyboard navigation
@@ -53,8 +55,6 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 | ![Light theme with find](docs/screenshots/light-find.png) | ![MCP activity badge](docs/screenshots/mcp.png) |
 
 ## MCP integration
-
-<img src="docs/media/claude-demo.gif" width="300" align="right" alt="Claude Code driving Hopline through MCP">
 
 Hopline can run a local [Model Context Protocol](https://modelcontextprotocol.io) server so an AI client such as Claude Code can open your saved sessions and run commands. Everything happens in visible tabs: the tab comes to the front and shows an **AI** badge while commands are sent.
 

@@ -14,13 +14,15 @@
   <a href="README.md">English</a> · 한국어
 </p>
 
-![Hopline 메인 화면](docs/screenshots/main-dark.png)
+![Claude Code가 MCP로 Hopline을 조작하는 모습](docs/media/hero.gif)
 
 <p align="center"><a href="docs/media/hopline-promo.mp4">▶ 30초 데모 영상 보기</a></p>
 
 Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된 세션, 탭, SFTP, 시리얼 콘솔, 멀티 실행)만 모아 약 16MB 실행 파일 하나에 담았습니다. Go와 [Wails](https://wails.io)로 만들었고 터미널 화면은 [xterm.js](https://xtermjs.org)로 그립니다.
 
 ## 기능
+
+![Hopline 메인 화면](docs/screenshots/main-dark.png)
 
 **세션과 터미널**
 - SSH·시리얼 세션을 폴더별로 저장하고 검색하거나 방향키로 고를 수 있음
@@ -53,8 +55,6 @@ Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된
 | ![라이트 테마와 찾기](docs/screenshots/light-find.png) | ![MCP 동작 표시](docs/screenshots/mcp.png) |
 
 ## MCP 연동
-
-<img src="docs/media/claude-demo.gif" width="300" align="right" alt="Claude Code가 MCP로 Hopline을 조작하는 모습">
 
 Hopline은 로컬 [MCP(Model Context Protocol)](https://modelcontextprotocol.io) 서버를 띄워 Claude Code 같은 AI 클라이언트가 저장된 세션을 열고 명령을 실행하게 할 수 있습니다. 모든 작업은 눈에 보이는 탭에서 이뤄지며, 명령을 보내는 동안 해당 탭이 앞으로 나오고 **AI** 표시가 붙습니다.
 
