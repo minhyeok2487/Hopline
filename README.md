@@ -9,6 +9,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/minhyeok2487/Hopline/releases/latest"><b>Download</b></a> ·
+  <a href="docs/GUIDE.md">User guide</a> ·
   English · <a href="README.ko.md">한국어</a>
 </p>
 
@@ -36,7 +38,7 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 - Per-tab session logs saved as plain text (escape codes stripped)
 
 **Comfort**
-- Dark and light themes, seven terminal color schemes, font, size, line height and cursor settings
+- Dark and light themes, seven terminal color schemes, UI size (90–150%), font, size, line height and cursor settings
 - Find in terminal (`Ctrl+Shift+F`), zoom (`Ctrl + = / -`), status bar with size, transfer and multi-exec state
 - English and Korean UI, following your Windows language by default
 
@@ -72,11 +74,17 @@ Hopline can run a local [Model Context Protocol](https://modelcontextprotocol.io
 
 Saved passwords never pass through MCP. If a session has no saved password, Hopline asks you for it in its own window while the assistant waits.
 
-## Install and build
+## Download
 
-Hopline targets Windows 10/11 and needs the WebView2 runtime (included with Windows 11).
+Grab `Hopline.exe` from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest) and run it; there is no installer. It runs on Windows 10/11 with the WebView2 runtime (built into Windows 11).
 
-To build from source you need Go 1.25+, Node.js 20+ and the Wails v2 CLI:
+The executable is not code-signed yet, so SmartScreen may warn on first launch: choose **More info → Run anyway**. The release notes list the SHA-256 so you can verify the download.
+
+New to Hopline? Read the [user guide](docs/GUIDE.md): sessions, SFTP, serial, multi-exec, macros, MCP setup and troubleshooting.
+
+## Build from source
+
+You need Go 1.25+, Node.js 20+ and the Wails v2 CLI:
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@latest

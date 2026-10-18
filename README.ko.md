@@ -9,6 +9,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/minhyeok2487/Hopline/releases/latest"><b>다운로드</b></a> ·
+  <a href="docs/GUIDE.ko.md">사용 가이드</a> ·
   <a href="README.md">English</a> · 한국어
 </p>
 
@@ -36,7 +38,7 @@ Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된
 - 탭별 세션 로그를 일반 텍스트로 저장(색상 코드 제거)
 
 **사용 편의**
-- 다크·라이트 테마, 터미널 색 테마 7종, 글꼴·크기·줄 간격·커서 설정
+- 다크·라이트 테마, 터미널 색 테마 7종, UI 크기(90~150%), 글꼴·크기·줄 간격·커서 설정
 - 터미널 찾기(`Ctrl+Shift+F`), 글자 크기 조절(`Ctrl + = / -`), 크기·전송·멀티 실행 상태를 보여주는 상태 표시줄
 - 한국어·영어 UI. 기본값은 Windows 언어를 따름
 
@@ -72,11 +74,17 @@ Hopline은 로컬 [MCP(Model Context Protocol)](https://modelcontextprotocol.io)
 
 저장된 비밀번호는 MCP로 전달되지 않습니다. 비밀번호가 저장되지 않은 세션은 Hopline 창에서 사용자에게 직접 물어보고, 그동안 AI는 기다립니다.
 
-## 설치와 빌드
+## 다운로드
 
-Windows 10/11에서 동작하며 WebView2 런타임이 필요합니다(Windows 11에는 기본 포함).
+[최신 릴리스](https://github.com/minhyeok2487/Hopline/releases/latest)에서 `Hopline.exe`를 받아 바로 실행하면 됩니다. 설치 과정은 없습니다. Windows 10/11에서 WebView2 런타임(Windows 11 기본 포함)으로 동작합니다.
 
-소스로 빌드하려면 Go 1.25 이상, Node.js 20 이상, Wails v2 CLI가 필요합니다.
+아직 코드 서명이 없어서 처음 실행할 때 SmartScreen 경고가 뜰 수 있습니다. **추가 정보 → 실행**을 누르세요. 릴리스 노트에 SHA-256 값이 있어 받은 파일을 확인할 수 있습니다.
+
+처음 쓰신다면 [사용 가이드](docs/GUIDE.ko.md)를 참고하세요. 세션, SFTP, 시리얼, 멀티 실행, 매크로, MCP 설정, 문제 해결을 다룹니다.
+
+## 소스로 빌드
+
+Go 1.25 이상, Node.js 20 이상, Wails v2 CLI가 필요합니다.
 
 ```bash
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
