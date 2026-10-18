@@ -18,7 +18,7 @@
 
 <p align="center"><a href="docs/media/hopline-promo.mp4">▶ 30초 데모 영상 보기</a></p>
 
-Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된 세션, 탭, SFTP, 시리얼 콘솔, 멀티 실행)만 모아 약 13MB 실행 파일 하나에 담았습니다. Go와 [Wails](https://wails.io)로 만들었고 터미널 화면은 [xterm.js](https://xtermjs.org)로 그립니다.
+Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된 세션, 탭, SFTP, 시리얼 콘솔, 멀티 실행)만 모아 약 16MB 실행 파일 하나에 담았습니다. Go와 [Wails](https://wails.io)로 만들었고 터미널 화면은 [xterm.js](https://xtermjs.org)로 그립니다.
 
 ## 기능
 

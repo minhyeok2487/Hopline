@@ -18,7 +18,7 @@
 
 <p align="center"><a href="docs/media/hopline-promo.mp4">▶ Watch the 30-second demo video</a></p>
 
-Hopline keeps the parts of a network engineer's terminal you use every day (saved sessions, tabs, SFTP, serial consoles, multi-exec) in a single ~13 MB executable. It is written in Go with [Wails](https://wails.io) and renders terminals with [xterm.js](https://xtermjs.org).
+Hopline keeps the parts of a network engineer's terminal you use every day (saved sessions, tabs, SFTP, serial consoles, multi-exec) in a single ~16 MB executable. It is written in Go with [Wails](https://wails.io) and renders terminals with [xterm.js](https://xtermjs.org).
 
 ## Features
 
