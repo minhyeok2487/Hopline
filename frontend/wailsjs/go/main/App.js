@@ -82,6 +82,10 @@ export function SaveUIPrefs(arg1) {
   return window['go']['main']['App']['SaveUIPrefs'](arg1);
 }
 
+export function SetActiveTab(arg1) {
+  return window['go']['main']['App']['SetActiveTab'](arg1);
+}
+
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
 }
@@ -96,6 +100,10 @@ export function SetMCPEnabled(arg1, arg2) {
 
 export function SetSessionPassword(arg1, arg2) {
   return window['go']['main']['App']['SetSessionPassword'](arg1, arg2);
+}
+
+export function SetTabTitle(arg1, arg2) {
+  return window['go']['main']['App']['SetTabTitle'](arg1, arg2);
 }
 
 export function SftpDownload(arg1, arg2) {

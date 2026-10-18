@@ -179,6 +179,8 @@ Hopline can run a local MCP server so an AI assistant such as Claude Code can op
    - *"Use hopline to open core-sw01 and show the interface status."*
    - *"With hopline, check disk usage on every Linux server in the Lab folder. Read-only commands only."*
 
+**Tabs you already opened:** you don't have to let the assistant connect. Open a session yourself (and log in on a serial console), then ask *"run `show ip interface brief` in my current tab"*. `list_tabs` shows every connected tab with `(active)` on the one in front, all tab tools accept `tab: "active"`, and `open_session` reuses an open tab of the same session instead of opening a duplicate.
+
 **What you will see:** the tab the assistant uses comes to the front and shows an **AI** badge while it types. If a session has no saved password, Hopline asks **you** for it in its own window; the assistant never receives saved passwords.
 
 **Tools:** `list_sessions`, `list_tabs`, `open_session`, `run_command`, `send_keys`, `read_output`, `sftp_list`, `sftp_read_file`, `sftp_write_file`, `sftp_download`, `sftp_upload`, `close_tab`. `run_command` waits for the prompt (or an `expect` pattern, up to 600 s) and answers `--More--` pagers automatically.

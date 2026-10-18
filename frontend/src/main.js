@@ -657,6 +657,7 @@ async function closeTab(tab, force = false) {
         state.active = null;
         const next = state.tabs[Math.min(i, state.tabs.length - 1)];
         if (next) activate(next);
+        else App.SetActiveTab('').catch(() => {});
     }
     renderTabs();
     renderSessions();
@@ -665,6 +666,7 @@ async function closeTab(tab, force = false) {
 
 function activate(tab) {
     state.active = tab;
+    App.SetActiveTab(tab.id).catch(() => {});
     for (const t of state.tabs) t.pane.classList.toggle('on', t === tab);
     renderTabs();
     requestAnimationFrame(() => {
@@ -745,7 +747,10 @@ function renameTab(tab) {
     input.focus();
     input.select();
     const done = (save) => {
-        if (save && input.value.trim()) tab.title = input.value.trim();
+        if (save && input.value.trim()) {
+            tab.title = input.value.trim();
+            App.SetTabTitle(tab.id, tab.title).catch(() => {});
+        }
         renderTabs();
         focusActive();
     };
@@ -1274,6 +1279,10 @@ EventsOn('mcp:open', async ({connId, sessionId}) => {
     if (!s) return App.ReportOpenResult(connId, t('mcp.noSession'));
     toast(t('mcp.opening', {name: s.name}));
     openSession(s, false, connId, true);
+});
+EventsOn('mcp:focus', (id) => {
+    const t = state.tabs.find((x) => x.id === id);
+    if (t && state.active !== t) activate(t);
 });
 EventsOn('mcp:close', (id) => {
     const t = state.tabs.find((x) => x.id === id);

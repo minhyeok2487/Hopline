@@ -24,10 +24,12 @@ type conn interface {
 }
 
 type liveConn struct {
-	id   string
-	name string
-	c    conn
-	ssh  *sshConn // nil for serial
+	id        string
+	name      string // tab title (session name, or what the user renamed it to)
+	sessionID string // "" for quick-connect tabs
+	target    string // user@host:port or COM port, for list_tabs
+	c         conn
+	ssh       *sshConn // nil for serial
 
 	logMu sync.Mutex
 	log   *os.File
@@ -40,9 +42,10 @@ type App struct {
 	ctx   context.Context
 	store *Store
 
-	mu      sync.Mutex
-	conns   map[string]*liveConn
-	dialing map[string]context.CancelFunc
+	mu        sync.Mutex
+	conns     map[string]*liveConn
+	activeTab string // tab the user is looking at (reported by the UI)
+	dialing   map[string]context.CancelFunc
 
 	mcp mcpState
 }
@@ -168,7 +171,7 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 		cancel()
 	}()
 
-	lc := &liveConn{id: connID, name: s.Name}
+	lc := &liveConn{id: connID, name: s.Name, sessionID: s.ID, target: targetOf(s)}
 	out := &emitter{a: a, lc: lc}
 	var wait func() string
 	switch s.Kind {
@@ -219,6 +222,36 @@ func (a *App) SaveUIPrefs(prefs string) error {
 	st := a.store.Settings()
 	st.UIPrefs = prefs
 	return a.store.PutSettings(st)
+}
+
+// SetActiveTab is called by the UI whenever the visible tab changes ("" when none).
+func (a *App) SetActiveTab(connID string) {
+	a.mu.Lock()
+	a.activeTab = connID
+	a.mu.Unlock()
+}
+
+// SetTabTitle keeps the backend's tab name in sync when the user renames a tab.
+func (a *App) SetTabTitle(connID, title string) {
+	a.mu.Lock()
+	if lc := a.conns[connID]; lc != nil && strings.TrimSpace(title) != "" {
+		lc.name = strings.TrimSpace(title)
+	}
+	a.mu.Unlock()
+}
+
+func targetOf(s Session) string {
+	if s.Kind == "serial" {
+		return fmt.Sprintf("%s %d", s.ComPort, s.Baud)
+	}
+	t := s.Host
+	if s.User != "" {
+		t = s.User + "@" + t
+	}
+	if s.Port != 0 && s.Port != 22 {
+		t = fmt.Sprintf("%s:%d", t, s.Port)
+	}
+	return t
 }
 
 func (a *App) get(connID string) *liveConn {

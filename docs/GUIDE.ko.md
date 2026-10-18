@@ -179,6 +179,8 @@ Hopline은 로컬 MCP 서버를 띄워 Claude Code 같은 AI 어시스턴트가 
    - *"hopline으로 core-sw01에 접속해서 인터페이스 상태 보여줘."*
    - *"hopline으로 Lab 폴더의 리눅스 서버 디스크 사용량 확인해줘. 조회 명령만 실행해."*
 
+**이미 열어 둔 탭 쓰기:** AI가 직접 접속하지 않아도 됩니다. 세션을 직접 열고(시리얼 콘솔이라면 로그인까지 하고) *"지금 보고 있는 탭에서 `show ip interface brief` 실행해줘"*라고 하면 됩니다. `list_tabs`에 연결된 모든 탭이 나오고 앞에 있는 탭은 `(active)`로 표시되며, 모든 탭 도구가 `tab: "active"`를 받습니다. `open_session`도 같은 세션의 탭이 열려 있으면 새로 열지 않고 그 탭을 씁니다.
+
 **화면에서 보이는 것:** AI가 쓰는 탭이 앞으로 나오고, 입력하는 동안 **AI** 표시가 붙습니다. 비밀번호가 저장되지 않은 세션은 Hopline 창에서 **사용자에게** 직접 묻습니다. 저장된 비밀번호는 AI에 전달되지 않습니다.
 
 **도구:** `list_sessions`, `list_tabs`, `open_session`, `run_command`, `send_keys`, `read_output`, `sftp_list`, `sftp_read_file`, `sftp_write_file`, `sftp_download`, `sftp_upload`, `close_tab`. `run_command`는 프롬프트(또는 `expect` 패턴, 최대 600초)가 나올 때까지 기다리고 `--More--`는 자동으로 넘깁니다.

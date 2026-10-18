@@ -69,12 +69,14 @@ Hopline은 로컬 [MCP(Model Context Protocol)](https://modelcontextprotocol.io)
 
 | 도구 | 하는 일 |
 |---|---|
-| `list_sessions`, `list_tabs` | 저장된 세션 / 연결된 탭 목록 |
-| `open_session` | 저장된 세션을 새 탭으로 열고 접속될 때까지 대기 |
+| `list_sessions`, `list_tabs` | 저장된 세션 / 연결된 탭 목록. 직접 연 탭도 포함되고, 지금 보고 있는 탭은 `(active)`로 표시 |
+| `open_session` | 그 세션의 열린 탭이 있으면 재사용, 없으면 새 탭을 열고 접속(`new: true`면 항상 새 탭) |
 | `run_command` | 명령을 보내고 출력을 반환. 프롬프트 감지, `expect` 정규식, `--More--` 자동 넘김 |
 | `send_keys`, `read_output` | 대화형 입력(Ctrl+C, y/n) / 현재 화면 읽기 |
 | `sftp_list`, `sftp_read_file`, `sftp_write_file`, `sftp_download`, `sftp_upload` | 탭의 SSH 연결을 이용한 파일 작업 |
 | `close_tab` | 탭 연결 끊고 닫기 |
+
+모든 탭 도구는 `tab: "active"`도 받으므로, 직접 접속해 둔 뒤 *"지금 보고 있는 탭에서 show version 실행해줘"*처럼 말하면 됩니다.
 
 저장된 비밀번호는 MCP로 전달되지 않습니다. 비밀번호가 저장되지 않은 세션은 Hopline 창에서 사용자에게 직접 물어보고, 그동안 AI는 기다립니다.
 

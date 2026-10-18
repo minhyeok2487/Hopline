@@ -69,12 +69,14 @@ Hopline can run a local [Model Context Protocol](https://modelcontextprotocol.io
 
 | Tool | What it does |
 |---|---|
-| `list_sessions`, `list_tabs` | Saved sessions and connected tabs |
-| `open_session` | Open a saved session as a new tab and wait until it connects |
+| `list_sessions`, `list_tabs` | Saved sessions and connected tabs, including tabs you opened yourself; the one you are looking at is marked `(active)` |
+| `open_session` | Reuse the session's open tab, or open and connect a new one (`new: true` forces a new tab) |
 | `run_command` | Send a command and return its output; detects the prompt, supports an `expect` regex and answers `--More--` pagers automatically |
 | `send_keys`, `read_output` | Interactive input (Ctrl+C, y/n) and reading the current screen |
 | `sftp_list`, `sftp_read_file`, `sftp_write_file`, `sftp_download`, `sftp_upload` | File operations over the tab's SSH connection |
 | `close_tab` | Disconnect and close a tab |
+
+Every tab tool also accepts `tab: "active"`, so you can connect yourself and simply say *"run show version in my current tab"*.
 
 Saved passwords never pass through MCP. If a session has no saved password, Hopline asks you for it in its own window while the assistant waits.
 

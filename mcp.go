@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -159,15 +160,16 @@ func (a *App) activity(connID, msg string) {
 // ---------- tool inputs ----------
 
 type tabIn struct {
-	Tab string `json:"tab" jsonschema:"tab id from list_tabs, or the tab/session name"`
+	Tab string `json:"tab" jsonschema:"tab id from list_tabs, the tab name, or \"active\" for the tab the user is looking at"`
 }
 
 type openIn struct {
 	Session string `json:"session" jsonschema:"saved session name or id (see list_sessions)"`
+	New     bool   `json:"new,omitempty" jsonschema:"open another tab even if this session already has a connected tab (default false: reuse it)"`
 }
 
 type runIn struct {
-	Tab        string `json:"tab" jsonschema:"tab id from list_tabs, or the tab/session name"`
+	Tab        string `json:"tab" jsonschema:"tab id from list_tabs, the tab name, or \"active\" for the tab the user is looking at"`
 	Command    string `json:"command" jsonschema:"command line to send; Enter is appended"`
 	TimeoutSec int    `json:"timeout_sec,omitempty" jsonschema:"max seconds to wait (default 30, max 600)"`
 	IdleMs     int    `json:"idle_ms,omitempty" jsonschema:"finish after this many ms without new output (default 1500)"`
@@ -176,36 +178,36 @@ type runIn struct {
 }
 
 type keysIn struct {
-	Tab    string `json:"tab" jsonschema:"tab id from list_tabs, or the tab/session name"`
+	Tab    string `json:"tab" jsonschema:"tab id from list_tabs, the tab name, or \"active\" for the tab the user is looking at"`
 	Text   string `json:"text" jsonschema:"raw text to type; use JSON escapes for control keys, e.g. \u0003 = Ctrl+C, \t = Tab, \u001b = Esc"`
 	Enter  bool   `json:"enter,omitempty" jsonschema:"append Enter after the text"`
 	WaitMs int    `json:"wait_ms,omitempty" jsonschema:"ms to collect output afterwards (default 1000)"`
 }
 
 type readIn struct {
-	Tab   string `json:"tab" jsonschema:"tab id from list_tabs, or the tab/session name"`
+	Tab   string `json:"tab" jsonschema:"tab id from list_tabs, the tab name, or \"active\" for the tab the user is looking at"`
 	Lines int    `json:"lines,omitempty" jsonschema:"number of recent lines (default 100)"`
 }
 
 type sftpPathIn struct {
-	Tab  string `json:"tab" jsonschema:"tab id of a connected SSH tab"`
+	Tab  string `json:"tab" jsonschema:"tab id or name of a connected SSH tab, or \"active\""`
 	Path string `json:"path,omitempty" jsonschema:"remote path; empty = login directory"`
 }
 
 type sftpReadIn struct {
-	Tab      string `json:"tab" jsonschema:"tab id of a connected SSH tab"`
+	Tab      string `json:"tab" jsonschema:"tab id or name of a connected SSH tab, or \"active\""`
 	Path     string `json:"path" jsonschema:"remote file path"`
 	MaxBytes int    `json:"max_bytes,omitempty" jsonschema:"read at most this many bytes (default 262144)"`
 }
 
 type sftpWriteIn struct {
-	Tab     string `json:"tab" jsonschema:"tab id of a connected SSH tab"`
+	Tab     string `json:"tab" jsonschema:"tab id or name of a connected SSH tab, or \"active\""`
 	Path    string `json:"path" jsonschema:"remote file path (overwritten)"`
 	Content string `json:"content" jsonschema:"text content to write"`
 }
 
 type sftpXferIn struct {
-	Tab    string `json:"tab" jsonschema:"tab id of a connected SSH tab"`
+	Tab    string `json:"tab" jsonschema:"tab id or name of a connected SSH tab, or \"active\""`
 	Remote string `json:"remote" jsonschema:"remote file path"`
 	Local  string `json:"local" jsonschema:"absolute local Windows path"`
 }
@@ -217,7 +219,9 @@ func text(s string) *mcp.CallToolResult {
 func (a *App) newMCPServer() *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "hopline", Title: "Hopline", Version: "0.1.0"}, &mcp.ServerOptions{
 		Instructions: "Hopline is the user's terminal app. Sessions open as visible tabs the user can watch. " +
-			"Typical flow: list_sessions -> open_session -> run_command. Network devices: --More-- pagers are answered automatically. " +
+			"Start with list_tabs: if the user already has a connected tab for the device, use it (pass tab=\"active\" for the tab the user is looking at). " +
+			"Only call open_session when no suitable tab is open; it reuses an existing tab of the same session unless new=true. " +
+			"Network devices: --More-- pagers are answered automatically. " +
 			"Never change device configuration unless the user explicitly asked for it.",
 	})
 
@@ -237,17 +241,27 @@ func (a *App) newMCPServer() *mcp.Server {
 			return text(b.String()), nil, nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{Name: "list_tabs", Description: "List currently connected tabs (id, name, kind)."},
+	mcp.AddTool(s, &mcp.Tool{Name: "list_tabs", Description: "List connected tabs, including ones the user opened: id, name, kind, target. The tab the user is currently looking at is marked (active)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
 			a.mu.Lock()
 			defer a.mu.Unlock()
 			var b strings.Builder
-			for id, lc := range a.conns {
+			ids := make([]string, 0, len(a.conns))
+			for id := range a.conns {
+				ids = append(ids, id)
+			}
+			sort.Strings(ids)
+			for _, id := range ids {
+				lc := a.conns[id]
 				kind := "serial"
 				if lc.ssh != nil {
 					kind = "ssh"
 				}
-				fmt.Fprintf(&b, "- tab=%s | %s | %s\n", id, lc.name, kind)
+				mark := ""
+				if id == a.activeTab {
+					mark = " | (active)"
+				}
+				fmt.Fprintf(&b, "- tab=%s | %s | %s | %s%s\n", id, lc.name, kind, lc.target, mark)
 			}
 			if b.Len() == 0 {
 				return text("No connected tabs. Use open_session to open one."), nil, nil
@@ -255,11 +269,17 @@ func (a *App) newMCPServer() *mcp.Server {
 			return text(b.String()), nil, nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{Name: "open_session", Description: "Open a saved session as a new visible tab and wait until connected. If no password is saved, the user is prompted in the app (wait up to 2 minutes). Returns the tab id and initial output."},
+	mcp.AddTool(s, &mcp.Tool{Name: "open_session", Description: "Get a connected tab for a saved session. If the user already has one open it is reused and brought to the front; otherwise a new visible tab is opened and connected (set new=true to always open another). If no password is saved, the user is prompted in the app (wait up to 2 minutes). Returns the tab id and recent output."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in openIn) (*mcp.CallToolResult, any, error) {
 			sess, err := a.findSession(in.Session)
 			if err != nil {
 				return nil, nil, err
+			}
+			if !in.New {
+				if lc := a.tabForSession(sess.ID); lc != nil {
+					runtime.EventsEmit(a.ctx, "mcp:focus", lc.id)
+					return text(fmt.Sprintf("tab=%s (%s) already open, reusing it\n---\n%s", lc.id, lc.name, lc.out.tail(30))), nil, nil
+				}
 			}
 			connID := "m" + newID()
 			ch := make(chan string, 1)
@@ -483,10 +503,32 @@ func (a *App) findSession(q string) (Session, error) {
 	return Session{}, fmt.Errorf("no session %q (see list_sessions)", q)
 }
 
+// tabForSession returns a connected tab of the saved session, preferring the active one.
+func (a *App) tabForSession(sessionID string) *liveConn {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if lc := a.conns[a.activeTab]; lc != nil && lc.sessionID == sessionID {
+		return lc
+	}
+	var best *liveConn
+	for _, lc := range a.conns {
+		if lc.sessionID == sessionID && (best == nil || lc.id < best.id) {
+			best = lc
+		}
+	}
+	return best
+}
+
 func (a *App) resolveTab(q string) (*liveConn, error) {
 	q = strings.TrimSpace(q)
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if strings.EqualFold(q, "active") || strings.EqualFold(q, "current") {
+		if lc := a.conns[a.activeTab]; lc != nil {
+			return lc, nil
+		}
+		return nil, errors.New("the user is not looking at a connected tab (see list_tabs)")
+	}
 	if lc, ok := a.conns[q]; ok {
 		return lc, nil
 	}
@@ -494,6 +536,13 @@ func (a *App) resolveTab(q string) (*liveConn, error) {
 	for _, lc := range a.conns {
 		if strings.EqualFold(lc.name, q) {
 			hits = append(hits, lc)
+		}
+	}
+	if len(hits) > 1 { // same name twice: prefer the tab the user is looking at
+		for _, lc := range hits {
+			if lc.id == a.activeTab {
+				return lc, nil
+			}
 		}
 	}
 	switch len(hits) {
