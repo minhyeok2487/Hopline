@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: User guide
+    url: https://github.com/minhyeok2487/Hopline/blob/main/docs/GUIDE.md
+    about: Setup, MCP and troubleshooting answers

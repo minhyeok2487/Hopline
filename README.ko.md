@@ -16,6 +16,8 @@
 
 ![Hopline 메인 화면](docs/screenshots/main-dark.png)
 
+<p align="center"><a href="docs/media/hopline-promo.mp4">▶ 30초 데모 영상 보기</a></p>
+
 Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된 세션, 탭, SFTP, 시리얼 콘솔, 멀티 실행)만 모아 약 13MB 실행 파일 하나에 담았습니다. Go와 [Wails](https://wails.io)로 만들었고 터미널 화면은 [xterm.js](https://xtermjs.org)로 그립니다.
 
 ## 기능
@@ -52,6 +54,8 @@ Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된
 
 ## MCP 연동
 
+<img src="docs/media/claude-demo.gif" width="300" align="right" alt="Claude Code가 MCP로 Hopline을 조작하는 모습">
+
 Hopline은 로컬 [MCP(Model Context Protocol)](https://modelcontextprotocol.io) 서버를 띄워 Claude Code 같은 AI 클라이언트가 저장된 세션을 열고 명령을 실행하게 할 수 있습니다. 모든 작업은 눈에 보이는 탭에서 이뤄지며, 명령을 보내는 동안 해당 탭이 앞으로 나오고 **AI** 표시가 붙습니다.
 
 1. 상단 **MCP** 버튼을 눌러 서버를 켭니다(`127.0.0.1:7781`에서만 열리고 토큰 인증 필요).
@@ -80,6 +84,12 @@ Hopline은 로컬 [MCP(Model Context Protocol)](https://modelcontextprotocol.io)
 
 아직 코드 서명이 없어서 처음 실행할 때 SmartScreen 경고가 뜰 수 있습니다. **추가 정보 → 실행**을 누르세요. 릴리스 노트에 SHA-256 값이 있어 받은 파일을 확인할 수 있습니다.
 
+[Scoop](https://scoop.sh)을 쓰면 명령 한 줄로 설치하고 업데이트할 수 있습니다.
+
+```bash
+scoop install https://raw.githubusercontent.com/minhyeok2487/Hopline/main/bucket/hopline.json
+```
+
 처음 쓰신다면 [사용 가이드](docs/GUIDE.ko.md)를 참고하세요. 세션, SFTP, 시리얼, 멀티 실행, 매크로, MCP 설정, 문제 해결을 다룹니다.
 
 ## 소스로 빌드
@@ -95,6 +105,16 @@ wails build
 ```
 
 실행 파일은 `build/bin/Hopline.exe`에 만들어집니다. 개발 중에는 `wails dev`로 실시간 반영 빌드를 쓸 수 있습니다.
+
+## 보안 구조
+
+AI가 실제 장비에 입력하는 도구라서 기본값을 보수적으로 잡았습니다.
+
+- **저장된 비밀번호는 AI에 전달되지 않습니다.** 세션은 Hopline에 저장된 접속 정보(Windows DPAPI 암호화)로 연결되고, 비밀번호가 없으면 Hopline 창에서 *사용자에게* 직접 묻습니다.
+- **로컬 전용, 토큰 인증.** MCP 서버는 직접 켜기 전에는 꺼져 있고, `127.0.0.1`에서만 열리며, 토큰 없는 요청과 DNS 리바인딩을 막습니다. 토큰을 재발급하면 기존 토큰은 바로 무효가 됩니다.
+- **모든 동작이 화면에 보입니다.** AI 명령은 일반 탭에서 실행되고 탭이 앞으로 나오며 **AI** 표시가 붙습니다. 언제든 직접 입력하거나 Ctrl+C를 누르거나 탭을 닫을 수 있습니다.
+- **호스트 키를 고정합니다.** SSH 호스트 키가 바뀌면 그냥 넘어가지 않고 접속을 막습니다.
+- **최소 권한은 여전히 중요합니다.** AI에게는 필요한 권한만 가진 장비 계정을 주고, 조회만 원할 때는 "조회 명령만"이라고 분명히 말하세요.
 
 ## 데이터 위치
 

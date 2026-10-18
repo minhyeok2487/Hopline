@@ -1,0 +1,40 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open session ...
+        2. Click ...
+  - type: input
+    id: version
+    attributes:
+      label: Hopline version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2"
+  - type: input
+    id: target
+    attributes:
+      label: Device or server you connected to
+      description: For example "Cisco IOS XE 17.9", "OpenSSH 9.6 on Ubuntu", "USB serial (CP210x)". Do not include passwords, IP addresses or other secrets.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error text or screenshot
+      description: Remove host names, IPs and credentials before pasting.

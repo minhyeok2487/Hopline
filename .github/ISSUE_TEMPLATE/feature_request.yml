@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an idea for Hopline
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task or problem. Mention the devices or workflow if it helps.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could Hopline help?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you do it today?
+      description: Other tools (MobaXterm, PuTTY, Tabby, ...) or workarounds you use now.

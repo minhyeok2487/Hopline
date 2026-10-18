@@ -16,6 +16,8 @@
 
 ![Hopline main window](docs/screenshots/main-dark.png)
 
+<p align="center"><a href="docs/media/hopline-promo.mp4">▶ Watch the 30-second demo video</a></p>
+
 Hopline keeps the parts of a network engineer's terminal you use every day (saved sessions, tabs, SFTP, serial consoles, multi-exec) in a single ~13 MB executable. It is written in Go with [Wails](https://wails.io) and renders terminals with [xterm.js](https://xtermjs.org).
 
 ## Features
@@ -52,6 +54,8 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 
 ## MCP integration
 
+<img src="docs/media/claude-demo.gif" width="300" align="right" alt="Claude Code driving Hopline through MCP">
+
 Hopline can run a local [Model Context Protocol](https://modelcontextprotocol.io) server so an AI client such as Claude Code can open your saved sessions and run commands. Everything happens in visible tabs: the tab comes to the front and shows an **AI** badge while commands are sent.
 
 1. Click **MCP** in the toolbar and turn the server on (it listens on `127.0.0.1:7781` only and requires a bearer token).
@@ -80,6 +84,12 @@ Grab `Hopline.exe` from the [latest release](https://github.com/minhyeok2487/Hop
 
 The executable is not code-signed yet, so SmartScreen may warn on first launch: choose **More info → Run anyway**. The release notes list the SHA-256 so you can verify the download.
 
+With [Scoop](https://scoop.sh) you can install and update it from the command line:
+
+```bash
+scoop install https://raw.githubusercontent.com/minhyeok2487/Hopline/main/bucket/hopline.json
+```
+
 New to Hopline? Read the [user guide](docs/GUIDE.md): sessions, SFTP, serial, multi-exec, macros, MCP setup and troubleshooting.
 
 ## Build from source
@@ -95,6 +105,16 @@ wails build
 ```
 
 The executable is written to `build/bin/Hopline.exe`. Use `wails dev` for a live-reloading development build.
+
+## Security model
+
+Hopline lets an AI assistant type into real devices, so the defaults are conservative:
+
+- **The AI never sees saved passwords.** Sessions connect with credentials stored in Hopline (encrypted with Windows DPAPI). When a password is missing, Hopline asks *you* in its own window.
+- **Local only, token protected.** The MCP server is off until you enable it, listens on `127.0.0.1` only, rejects requests without the bearer token and has DNS-rebinding protection. Regenerating the token revokes the old one.
+- **Everything is visible.** Every AI command runs in a normal tab that comes to the front with an **AI** badge, and you can type, press Ctrl+C or close the tab at any time.
+- **Host keys are pinned.** A changed SSH host key blocks the connection instead of silently continuing.
+- **Least privilege still matters.** Give the AI device accounts with only the rights it needs, and say "read-only commands only" when that is what you want.
 
 ## Where data is stored
 
