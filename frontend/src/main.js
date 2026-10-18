@@ -45,6 +45,7 @@ const DEFAULT_PREFS = {
     rightClickPaste: true,
     confirmMultiline: true,
     confirmClose: true,
+    uiScale: 100,              // % zoom for the app chrome (terminal text uses fontSize)
     sideWidth: 270,
     sideCollapsed: false,
     recents: [],               // [{id} | {adhoc:{host,user,port}}, t]
@@ -105,7 +106,10 @@ function applyLanguage() {
     refreshMcpButton().catch(() => {});
 }
 
+const uiZoom = () => (prefs.uiScale || 100) / 100;
+
 function applyLayout() {
+    document.documentElement.style.setProperty('--ui-zoom', uiZoom());
     $('#app').style.setProperty('--side-w', prefs.sideWidth + 'px');
     $('#app').classList.toggle('side-collapsed', prefs.sideCollapsed);
     $('#side-open').classList.toggle('hidden', !prefs.sideCollapsed);
@@ -166,8 +170,10 @@ function ctxMenu(x, y, items) {
     }
     m.classList.remove('hidden');
     const r = m.getBoundingClientRect();
-    m.style.left = Math.min(x, innerWidth - r.width - 4) + 'px';
-    m.style.top = Math.min(y, innerHeight - r.height - 4) + 'px';
+    // The menu is zoomed with the UI, so its CSS offsets are in zoomed units.
+    const z = uiZoom();
+    m.style.left = Math.min(x, innerWidth - r.width - 4) / z + 'px';
+    m.style.top = Math.min(y, innerHeight - r.height - 4) / z + 'px';
 }
 const hideCtx = () => $('#ctx').classList.add('hidden');
 addEventListener('click', hideCtx);
@@ -901,7 +907,7 @@ $('#resizer').addEventListener('mousedown', (e) => {
     const r = $('#resizer');
     r.classList.add('drag');
     const move = (ev) => {
-        prefs.sideWidth = Math.max(200, Math.min(520, ev.clientX));
+        prefs.sideWidth = Math.max(200, Math.min(520, ev.clientX / uiZoom()));
         $('#app').style.setProperty('--side-w', prefs.sideWidth + 'px');
     };
     const up = () => {
@@ -1206,6 +1212,7 @@ async function settingsDialog(before = null) {
     const body = `<div class="f">
         <h4>${t('set.secView')}</h4>
         <label>${t('set.lang')}</label><select data-pref="lang"><option value="auto" ${prefs.lang === 'auto' ? 'selected' : ''}>${t('set.langAuto')}</option>${Object.entries(LANGS).map(([k, v]) => `<option value="${k}" ${prefs.lang === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+        <label>${t('set.uiScale')}</label><div class="inline"><input type="range" min="90" max="150" step="10" data-pref="uiScale" value="${prefs.uiScale}"/><output class="mono">${prefs.uiScale}%</output></div>
         <label>${t('set.theme')}</label>${seg('appTheme', [['system', t('set.system')], ['dark', t('set.dark')], ['light', t('set.light')]])}
         <h4>${t('set.secTerm')}</h4>
         <label>${t('set.scheme')}</label><select data-pref="termScheme"><option value="auto">${t('set.schemeAuto')}</option>${Object.keys(SCHEMES).map((k) => `<option ${prefs.termScheme === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select>
@@ -1235,6 +1242,7 @@ async function settingsDialog(before = null) {
                     settingsDialog(before);
                     return;
                 }
+                if (key === 'uiScale') applyLayout();
                 applyTheme();
                 r.querySelector('#scheme-preview').innerHTML = schemePreview(prefs.termScheme);
             };
@@ -1248,11 +1256,11 @@ async function settingsDialog(before = null) {
                 el.addEventListener('input', () => {
                     update(el.dataset.pref, el.type === 'checkbox' ? el.checked : el.value);
                     const out = el.parentElement.querySelector('output');
-                    if (out) out.textContent = el.dataset.pref === 'fontSize' ? el.value + 'px' : el.value;
+                    if (out) out.textContent = el.dataset.pref === 'fontSize' ? el.value + 'px' : el.dataset.pref === 'uiScale' ? el.value + '%' : el.value;
                 });
             });
         },
-        onCancel: () => { prefs = JSON.parse(before); applyLanguage(); applyTheme(); },
+        onCancel: () => { prefs = JSON.parse(before); applyLanguage(); applyLayout(); applyTheme(); },
     });
     if (ok) { savePrefs(); toast(t('set.saved'), 'ok'); }
 }

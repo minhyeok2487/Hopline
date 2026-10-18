@@ -69,7 +69,7 @@ const ko = {
     'macro.body': '명령 (한 줄에 하나씩, 줄마다 Enter를 보냅니다)', 'macro.delay': '줄 간격', 'macro.needName': '이름을 입력하세요',
     // settings
     'set.title': '설정', 'set.secView': '화면', 'set.lang': '언어', 'set.langAuto': '자동 (Windows 언어)',
-    'set.theme': '앱 테마', 'set.system': '시스템', 'set.dark': '다크', 'set.light': '라이트',
+    'set.uiScale': 'UI 크기', 'set.theme': '앱 테마', 'set.system': '시스템', 'set.dark': '다크', 'set.light': '라이트',
     'set.secTerm': '터미널', 'set.scheme': '색 테마', 'set.schemeAuto': '자동 (앱 테마 따라감)', 'set.font': '글꼴', 'set.fontSize': '글자 크기',
     'set.lineHeight': '줄 간격', 'set.cursor': '커서', 'set.block': '블록', 'set.bar': '막대', 'set.underline': '밑줄', 'set.blink': '깜빡임',
     'set.scrollback': '스크롤백', 'set.lines': '줄', 'set.secBehavior': '동작',
@@ -137,7 +137,7 @@ const en = {
     'macro.noTarget': 'No connected tab to run on', 'macro.ran': 'Ran "{name}" on {n} tab(s)', 'macro.namePh': 'e.g. Health check',
     'macro.body': 'Commands (one per line; Enter is sent after each)', 'macro.delay': 'Line delay', 'macro.needName': 'Enter a name',
     'set.title': 'Settings', 'set.secView': 'Appearance', 'set.lang': 'Language', 'set.langAuto': 'Auto (Windows language)',
-    'set.theme': 'App theme', 'set.system': 'System', 'set.dark': 'Dark', 'set.light': 'Light',
+    'set.uiScale': 'UI size', 'set.theme': 'App theme', 'set.system': 'System', 'set.dark': 'Dark', 'set.light': 'Light',
     'set.secTerm': 'Terminal', 'set.scheme': 'Color scheme', 'set.schemeAuto': 'Auto (follows app theme)', 'set.font': 'Font', 'set.fontSize': 'Font size',
     'set.lineHeight': 'Line height', 'set.cursor': 'Cursor', 'set.block': 'Block', 'set.bar': 'Bar', 'set.underline': 'Underline', 'set.blink': 'Blink',
     'set.scrollback': 'Scrollback', 'set.lines': 'lines', 'set.secBehavior': 'Behavior',

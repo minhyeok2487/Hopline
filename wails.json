@@ -7,7 +7,14 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "",
+    "name": "minhyeok2487",
     "email": ""
+  },
+  "info": {
+    "companyName": "minhyeok2487",
+    "productName": "Hopline",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright (c) 2026 minhyeok2487 (MIT License)",
+    "comments": "Lightweight SSH, SFTP and serial terminal with an MCP server"
   }
 }
