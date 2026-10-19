@@ -191,16 +191,19 @@ Hopline can run a local MCP server so an AI assistant such as Claude Code can op
 
 **Set up**
 
-1. Click **MCP** in the toolbar and check **Enable MCP server**. It listens on `127.0.0.1:7781` only and requires a token.
-2. Click **Copy command** and run it once in a terminal. It looks like:
+1. Click **MCP** in the toolbar and press **Connect to Claude Code**. Hopline turns the server on (it listens on `127.0.0.1:7781` only and requires a token), registers it with Claude Code and installs the `hopline` skill to `~/.claude/skills/hopline`.
+   - If the `claude` command isn't installed on this PC, press **Copy setup prompt for Claude** and paste it into a Claude Code chat. Claude registers the server and saves the skill for you.
+   - To do it by hand, check **Enable MCP server**, then run the command from **Copy command** once in a terminal:
 
-   ```bash
-   claude mcp add --scope user --transport http hopline http://127.0.0.1:7781/mcp --header "Authorization: Bearer <token>"
-   ```
+     ```bash
+     claude mcp add --scope user --transport http hopline http://127.0.0.1:7781/mcp --header "Authorization: Bearer <token>"
+     ```
 
-3. Keep Hopline running. Start a new Claude Code session and ask, for example:
+2. Keep Hopline running. Start a new Claude Code session and ask, for example:
    - *"Use hopline to open core-sw01 and show the interface status."*
    - *"With hopline, check disk usage on every Linux server in the Lab folder. Read-only commands only."*
+
+**The hopline skill** tells Claude how to work on devices through Hopline: check your open tabs first, identify the platform, stay read-only unless you ask for a change, show the exact commands and wait for your approval before changing anything, and finish with a short summary table. Hopline updates the installed skill when Hopline itself is updated; delete the `Installed by Hopline` line in the file to keep your own edits.
 
 **Tabs you already opened:** you don't have to let the assistant connect. Open a session yourself (and log in on a serial console), then ask *"run `show ip interface brief` in my current tab"*. `list_tabs` shows every connected tab with `(active)` on the one in front, all tab tools accept `tab: "active"`, and `open_session` reuses an open tab of the same session instead of opening a duplicate.
 

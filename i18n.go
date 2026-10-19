@@ -35,6 +35,7 @@ var messages = map[string]map[string]string{
 		"tray.quit":            "Quit",
 		"tray.mcpOn":           "MCP server running (port %d)",
 		"tray.mcpOff":          "MCP server off",
+		"claude.prompt":        "Connect Hopline (a terminal app) to Claude Code and install its \"hopline\" skill.\n\n1. Register the MCP server with this command. If a server named hopline already exists, run `claude mcp remove hopline -s user` first.\n\n```\n%s\n```\n\n2. Save the text below exactly as it is to `~/.claude/skills/hopline/SKILL.md` (create the folders if needed).\n\n````markdown\n%s````\n\n3. When you're done, tell me to open a new Claude Code session so the hopline tools load.",
 	},
 	"ko": {
 		"dlg.pickKey":          "개인키 선택",
@@ -63,6 +64,7 @@ var messages = map[string]map[string]string{
 		"tray.quit":            "종료",
 		"tray.mcpOn":           "MCP 서버 실행 중 (포트 %d)",
 		"tray.mcpOff":          "MCP 서버 꺼짐",
+		"claude.prompt":        "Hopline(터미널 앱)을 Claude Code에 연결하고 hopline 스킬을 설치해줘.\n\n1. 아래 명령으로 MCP 서버를 등록해. 이미 hopline이 등록돼 있으면 먼저 `claude mcp remove hopline -s user`를 실행해.\n\n```\n%s\n```\n\n2. 아래 내용을 그대로 `~/.claude/skills/hopline/SKILL.md` 파일로 저장해 (폴더가 없으면 만들어).\n\n````markdown\n%s````\n\n3. 끝나면 hopline 도구를 쓰려면 Claude Code 새 세션을 열어야 한다고 알려줘.",
 	},
 }
 

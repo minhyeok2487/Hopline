@@ -8,6 +8,8 @@ export function Connect(arg1:string,arg2:string,arg3:string,arg4:number,arg5:num
 
 export function ConnectAdhoc(arg1:string,arg2:main.Session,arg3:string,arg4:number,arg5:number):Promise<void>;
 
+export function ConnectClaudeCode():Promise<main.ClaudeSetup>;
+
 export function DeleteMacro(arg1:string):Promise<void>;
 
 export function DeleteSession(arg1:string):Promise<void>;
@@ -15,6 +17,8 @@ export function DeleteSession(arg1:string):Promise<void>;
 export function Disconnect(arg1:string):Promise<void>;
 
 export function GetAutostart():Promise<boolean>;
+
+export function GetClaudeSetupPrompt():Promise<string>;
 
 export function GetCloseToTray():Promise<boolean>;
 

@@ -191,16 +191,19 @@ Hopline은 로컬 MCP 서버를 띄워 Claude Code 같은 AI 어시스턴트가 
 
 **설정**
 
-1. 도구 막대의 **MCP**를 누르고 **MCP 서버 켜기**를 체크합니다. `127.0.0.1:7781`에서만 열리고 토큰이 필요합니다.
-2. **명령 복사**를 눌러 터미널에서 한 번 실행합니다. 이런 형태입니다.
+1. 도구 막대의 **MCP**를 누르고 **Claude Code에 연결**을 누릅니다. Hopline이 서버를 켜고(`127.0.0.1:7781`에서만 열리고 토큰 필요) Claude Code에 등록한 뒤 `hopline` 스킬을 `~/.claude/skills/hopline`에 설치합니다.
+   - 이 PC에 `claude` 명령이 없으면 **Claude용 설정 문구 복사**를 눌러 Claude Code 채팅에 붙여넣으세요. Claude가 등록과 스킬 저장을 대신 합니다.
+   - 직접 하려면 **MCP 서버 켜기**를 체크하고 **명령 복사**로 복사한 명령을 터미널에서 한 번 실행합니다.
 
-   ```bash
-   claude mcp add --scope user --transport http hopline http://127.0.0.1:7781/mcp --header "Authorization: Bearer <토큰>"
-   ```
+     ```bash
+     claude mcp add --scope user --transport http hopline http://127.0.0.1:7781/mcp --header "Authorization: Bearer <토큰>"
+     ```
 
-3. Hopline을 켜 둔 채 새 Claude Code 세션을 열고 요청합니다. 예:
+2. Hopline을 켜 둔 채 새 Claude Code 세션을 열고 요청합니다. 예:
    - *"hopline으로 core-sw01에 접속해서 인터페이스 상태 보여줘."*
    - *"hopline으로 Lab 폴더의 리눅스 서버 디스크 사용량 확인해줘. 조회 명령만 실행해."*
+
+**hopline 스킬**은 Claude가 Hopline으로 장비 작업을 하는 방법을 알려 줍니다. 열린 탭을 먼저 확인하고, 장비 종류를 파악하고, 요청이 없으면 조회만 하고, 설정을 바꿀 때는 정확한 명령을 보여 준 뒤 승인을 받고, 마지막에 요약 표로 정리합니다. Hopline을 업데이트하면 설치된 스킬도 새 버전으로 바뀝니다. 직접 고친 내용을 유지하려면 파일의 `Installed by Hopline` 줄을 지우세요.
 
 **이미 열어 둔 탭 쓰기:** AI가 직접 접속하지 않아도 됩니다. 세션을 직접 열고(시리얼 콘솔이라면 로그인까지 하고) *"지금 보고 있는 탭에서 `show ip interface brief` 실행해줘"*라고 하면 됩니다. `list_tabs`에 연결된 모든 탭이 나오고 앞에 있는 탭은 `(active)`로 표시되며, 모든 탭 도구가 `tab: "active"`를 받습니다. `open_session`도 같은 세션의 탭이 열려 있으면 새로 열지 않고 그 탭을 씁니다.
 

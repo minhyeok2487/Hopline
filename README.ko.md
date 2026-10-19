@@ -60,14 +60,10 @@ Hopline은 네트워크 엔지니어가 매일 쓰는 터미널 기능(저장된
 
 Hopline은 로컬 [MCP(Model Context Protocol)](https://modelcontextprotocol.io) 서버를 띄워 Claude Code 같은 AI 클라이언트가 저장된 세션을 열고 명령을 실행하게 할 수 있습니다. 모든 작업은 눈에 보이는 탭에서 이뤄지며, 명령을 보내는 동안 해당 탭이 앞으로 나오고 **AI** 표시가 붙습니다.
 
-1. 상단 **MCP** 버튼을 눌러 서버를 켭니다(`127.0.0.1:7781`에서만 열리고 토큰 인증 필요).
-2. 창에 표시된 등록 명령을 복사해 한 번 실행합니다.
-
-   ```bash
-   claude mcp add --scope user --transport http hopline http://127.0.0.1:7781/mcp --header "Authorization: Bearer <토큰>"
-   ```
-
-3. Hopline을 켜 둔 채 AI에게 요청합니다. 예: *"hopline으로 core-sw01에 접속해서 인터페이스 상태 보여줘. 조회 명령만 실행해."*
+1. 상단 **MCP** 버튼을 누르고 **Claude Code에 연결**을 누릅니다. Hopline이 서버를 켜고(`127.0.0.1:7781` 전용, 토큰 인증) Claude Code에 등록한 뒤 [`hopline` 스킬](skills/hopline/SKILL.md)을 설치합니다. 스킬은 Claude가 장비에서 안전하게 일하는 순서를 알려 줍니다(열린 탭 먼저 확인, 기본은 조회만, 변경은 승인 후, 결과는 요약 표로).
+   - 이 PC에 `claude` 명령이 없으면 **Claude용 설정 문구 복사**를 눌러 Claude Code 채팅에 붙여넣으세요. Claude가 등록과 스킬 저장을 직접 합니다.
+   - 직접 하고 싶다면 창에 나오는 `claude mcp add ...` 명령을 실행해도 됩니다.
+2. Claude Code에서 새 세션을 엽니다. Hopline을 켜 둔 채 AI에게 요청합니다. 예: *"hopline으로 core-sw01에 접속해서 인터페이스 상태 보여줘. 조회 명령만 실행해."*
 
 | 도구 | 하는 일 |
 |---|---|

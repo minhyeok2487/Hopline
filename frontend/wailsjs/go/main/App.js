@@ -14,6 +14,10 @@ export function ConnectAdhoc(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ConnectAdhoc'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function ConnectClaudeCode() {
+  return window['go']['main']['App']['ConnectClaudeCode']();
+}
+
 export function DeleteMacro(arg1) {
   return window['go']['main']['App']['DeleteMacro'](arg1);
 }
@@ -28,6 +32,10 @@ export function Disconnect(arg1) {
 
 export function GetAutostart() {
   return window['go']['main']['App']['GetAutostart']();
+}
+
+export function GetClaudeSetupPrompt() {
+  return window['go']['main']['App']['GetClaudeSetupPrompt']();
 }
 
 export function GetCloseToTray() {

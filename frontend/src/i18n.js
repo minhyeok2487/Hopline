@@ -43,6 +43,12 @@ const ko = {
     'tray.title': '창을 닫으면 트레이로 숨겨집니다', 'tray.hide': '트레이로 숨기기', 'tray.quitNow': '지금 완전히 종료',
     'tray.body': 'Hopline은 작업 표시줄 오른쪽 알림 영역에서 계속 실행되어 MCP 서버와 열린 연결이 유지됩니다. 트레이 아이콘을 클릭하면 창이 다시 열리고, 완전히 끄려면 아이콘을 우클릭해 <b>종료</b>를 누르세요.',
     'tray.change': '설정 › 창에서 닫기 동작을 바꿀 수 있습니다.',
+    'mcp.connectClaude': 'Claude Code에 연결', 'mcp.copyPrompt': 'Claude용 설정 문구 복사', 'mcp.manual': '직접 등록',
+    'mcp.claudeHint': '[Claude Code에 연결]은 MCP 서버를 켜고 Claude Code 등록과 hopline 스킬 설치를 한 번에 합니다. claude 명령이 없거나 다른 PC의 Claude에 설정하려면 설정 문구를 복사해 Claude Code 채팅에 붙여넣으세요. 끝나면 Claude Code에서 새 세션을 여세요.',
+    'mcp.claudeDone': 'Claude Code에 hopline을 등록하고 스킬을 설치했습니다. Claude Code에서 새 세션을 열면 바로 쓸 수 있습니다.',
+    'mcp.noCli': 'claude 명령을 찾지 못해 스킬만 설치했습니다. [Claude용 설정 문구 복사]를 눌러 Claude Code 채팅에 붙여넣으세요.',
+    'mcp.skillKept': '(직접 고친 스킬 파일은 그대로 두었습니다)',
+    'mcp.promptCopied': '설정 문구를 복사했습니다. Claude Code 채팅에 붙여넣으면 Claude가 등록과 스킬 설치를 합니다.',
     'lg.sec': '자동 로그온', 'lg.enable': '접속하면 아래 단계를 자동으로 실행', 'lg.cr': '먼저 Enter 보내기 (시리얼 콘솔 깨우기)',
     'lg.expect': '기다릴 문자열 (Expect)', 'lg.send': '보낼 내용 (Send)', 'lg.hide': '숨김', 'lg.add': '단계 추가', 'lg.preset': 'enable 예시 추가',
     'lg.expectPh': '예: Password:', 'lg.sendPh': 'Enter는 자동으로 붙음', 'lg.secretSaved': '저장됨 · 바꿀 때만 입력', 'lg.secretPh': '비밀번호 등 숨길 값',
@@ -95,7 +101,7 @@ const ko = {
     'mcp.title': 'MCP 연동', 'mcp.enable': 'MCP 서버 켜기 (127.0.0.1 전용)', 'mcp.status': '상태', 'mcp.statusOn': '실행 중', 'mcp.statusOff': '꺼짐',
     'mcp.cmdLabel': 'Claude Code 등록 명령 (토큰 포함 · 다른 사람과 공유하지 마세요)', 'mcp.copyCmd': '명령 복사', 'mcp.regen': '토큰 재발급',
     'mcp.hint': 'AI가 저장된 세션을 탭으로 열고 명령을 실행해 결과를 읽습니다. 저장된 비밀번호는 AI에 전달되지 않습니다.',
-    'mcp.apply': '적용', 'mcp.copied': '명령을 복사했습니다', 'mcp.regenDone': '토큰을 재발급했습니다. Claude Code에 다시 등록하세요.',
+    'mcp.apply': '적용', 'mcp.copied': '명령을 복사했습니다', 'mcp.regenDone': '토큰을 재발급했습니다. [Claude Code에 연결]을 다시 누르세요.',
     'mcp.startedAt': 'MCP 서버 실행 중: {url}', 'mcp.stopped': 'MCP 서버를 껐습니다',
 };
 
@@ -133,6 +139,12 @@ const en = {
     'tray.title': 'Hopline keeps running in the tray', 'tray.hide': 'Hide to tray', 'tray.quitNow': 'Quit now',
     'tray.body': 'Closing the window keeps Hopline running in the notification area, so the MCP server and open connections stay up. Click the tray icon to bring the window back; right-click it and choose <b>Quit</b> to exit.',
     'tray.change': 'You can change this in Settings › Window.',
+    'mcp.connectClaude': 'Connect to Claude Code', 'mcp.copyPrompt': 'Copy setup prompt for Claude', 'mcp.manual': 'Manual setup',
+    'mcp.claudeHint': 'Connect to Claude Code turns the MCP server on, registers it with Claude Code and installs the hopline skill in one step. Without the claude command, copy the setup prompt and paste it into a Claude Code chat instead. Then open a new Claude Code session.',
+    'mcp.claudeDone': 'Registered hopline with Claude Code and installed the skill. Open a new Claude Code session to use it.',
+    'mcp.noCli': 'The claude command wasn\'t found, so only the skill was installed. Use Copy setup prompt for Claude and paste it into a Claude Code chat.',
+    'mcp.skillKept': '(your edited skill file was left as is)',
+    'mcp.promptCopied': 'Setup prompt copied. Paste it into a Claude Code chat and Claude will register the server and install the skill.',
     'lg.sec': 'Logon actions', 'lg.enable': 'Run these steps after connecting', 'lg.cr': 'Send Enter first (wakes a serial console)',
     'lg.expect': 'Expect', 'lg.send': 'Send', 'lg.hide': 'Hide', 'lg.add': 'Add step', 'lg.preset': 'Add enable example',
     'lg.expectPh': 'e.g. Password:', 'lg.sendPh': 'Enter is added', 'lg.secretSaved': 'Saved · type only to change', 'lg.secretPh': 'Password or other secret',
@@ -177,7 +189,7 @@ const en = {
     'mcp.title': 'MCP integration', 'mcp.enable': 'Enable MCP server (127.0.0.1 only)', 'mcp.status': 'Status', 'mcp.statusOn': 'Running', 'mcp.statusOff': 'Off',
     'mcp.cmdLabel': 'Claude Code registration command (contains your token · don\'t share it)', 'mcp.copyCmd': 'Copy command', 'mcp.regen': 'New token',
     'mcp.hint': 'AI clients can open saved sessions as tabs, run commands and read the output. Saved passwords are never sent to the AI.',
-    'mcp.apply': 'Apply', 'mcp.copied': 'Command copied', 'mcp.regenDone': 'New token issued. Register it in Claude Code again.',
+    'mcp.apply': 'Apply', 'mcp.copied': 'Command copied', 'mcp.regenDone': 'New token issued. Press Connect to Claude Code again.',
     'mcp.startedAt': 'MCP server running: {url}', 'mcp.stopped': 'MCP server stopped',
 };
 

@@ -69,6 +69,7 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 	a.startTray()
+	go updateSkill()
 }
 
 func (a *App) shutdown(ctx context.Context) {

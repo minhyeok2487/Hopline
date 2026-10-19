@@ -1,5 +1,25 @@
 export namespace main {
 	
+	export class ClaudeSetup {
+	    cliFound: boolean;
+	    registered: boolean;
+	    skillPath: string;
+	    skillKept: boolean;
+	    output?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ClaudeSetup(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cliFound = source["cliFound"];
+	        this.registered = source["registered"];
+	        this.skillPath = source["skillPath"];
+	        this.skillKept = source["skillKept"];
+	        this.output = source["output"];
+	    }
+	}
 	export class FileEntry {
 	    name: string;
 	    size: number;

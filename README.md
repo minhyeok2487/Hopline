@@ -60,14 +60,10 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 
 Hopline can run a local [Model Context Protocol](https://modelcontextprotocol.io) server so an AI client such as Claude Code can open your saved sessions and run commands. Everything happens in visible tabs: the tab comes to the front and shows an **AI** badge while commands are sent.
 
-1. Click **MCP** in the toolbar and turn the server on (it listens on `127.0.0.1:7781` only and requires a bearer token).
-2. Copy the registration command shown in the dialog and run it once:
-
-   ```bash
-   claude mcp add --scope user --transport http hopline http://127.0.0.1:7781/mcp --header "Authorization: Bearer <token>"
-   ```
-
-3. Keep Hopline running and ask your assistant, for example: *"Use hopline to open core-sw01 and show the interface status. Read-only commands only."*
+1. Click **MCP** in the toolbar and press **Connect to Claude Code**. Hopline turns its server on (`127.0.0.1:7781` only, bearer token), registers it with Claude Code and installs the [`hopline` skill](skills/hopline/SKILL.md), which teaches Claude a safe way to work on devices (check open tabs first, read-only by default, approval before changes, a summary table at the end).
+   - No `claude` command on this PC? Press **Copy setup prompt for Claude** instead and paste it into a Claude Code chat; Claude runs the registration and saves the skill itself.
+   - Prefer doing it by hand? The dialog also shows the plain `claude mcp add ...` command.
+2. Open a new Claude Code session. Keep Hopline running and ask your assistant, for example: *"Use hopline to open core-sw01 and show the interface status. Read-only commands only."*
 
 | Tool | What it does |
 |---|---|

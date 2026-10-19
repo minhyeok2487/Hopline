@@ -1453,12 +1453,18 @@ async function refreshMcpButton() {
     renderStatus();
 }
 
+const mcpStatus = (info) => (info.running ? `<b style="color:var(--ok)">${t('mcp.statusOn')}</b> <span class="mono">${esc(info.url)}</span>` : t('mcp.statusOff'));
+
 async function mcpDialog() {
     let info = await App.GetMCPInfo();
     await modal(t('mcp.title'), `<div class="f">
         <span></span><label class="chk"><input type="checkbox" name="on" ${info.enabled ? 'checked' : ''}/> ${t('mcp.enable')}</label>
         <label>${t('common.port')}</label><input name="port" type="number" value="${info.port}"/>
-        <label>${t('mcp.status')}</label><span>${info.running ? `<b style="color:var(--ok)">${t('mcp.statusOn')}</b> <span class="mono">${esc(info.url)}</span>` : t('mcp.statusOff')}</span>
+        <label>${t('mcp.status')}</label><span data-el="status">${mcpStatus(info)}</span>
+        <h4>Claude Code</h4>
+        <span></span><div class="inline claude-btns"><button type="button" class="primary" data-x="claude">${icon('bot')}${t('mcp.connectClaude')}</button><button type="button" data-x="prompt">${t('mcp.copyPrompt')}</button></div>
+        <p class="full hint">${t('mcp.claudeHint')}</p>
+        <h4>${t('mcp.manual')}</h4>
         ${info.command ? `<label class="full">${t('mcp.cmdLabel')}</label>
         <textarea class="full" name="cmd" rows="3" readonly>${esc(info.command)}</textarea>
         <span></span><div class="inline"><button type="button" data-x="copy">${t('mcp.copyCmd')}</button><button type="button" data-x="regen">${t('mcp.regen')}</button></div>` : ''}
@@ -1467,6 +1473,33 @@ async function mcpDialog() {
         okText: t('mcp.apply'),
         onMount: (r) => {
             r.querySelector('[data-x=copy]')?.addEventListener('click', () => { ClipboardSetText(info.command); toast(t('mcp.copied'), 'ok'); });
+            // Both Claude options need the server on (and a token), so they switch it on first.
+            const ensureOn = async () => {
+                if (info.running) return;
+                info = await App.SetMCPEnabled(true, parseInt(r.querySelector('[name=port]').value, 10) || 0);
+                r.querySelector('[name=on]').checked = true;
+                r.querySelector('[data-el=status]').innerHTML = mcpStatus(info);
+                refreshMcpButton();
+            };
+            r.querySelector('[data-x=claude]').addEventListener('click', async (e) => {
+                const b = e.currentTarget;
+                b.disabled = true;
+                try {
+                    await ensureOn();
+                    const res = await App.ConnectClaudeCode();
+                    const kept = res.skillKept ? ' ' + t('mcp.skillKept') : '';
+                    if (res.registered) toast(t('mcp.claudeDone') + kept, 'ok');
+                    else toast(t('mcp.noCli') + kept, 'err');
+                } catch (err) { toast(String(err), 'err'); }
+                b.disabled = false;
+            });
+            r.querySelector('[data-x=prompt]').addEventListener('click', async () => {
+                try {
+                    await ensureOn();
+                    ClipboardSetText(await App.GetClaudeSetupPrompt());
+                    toast(t('mcp.promptCopied'), 'ok');
+                } catch (err) { toast(String(err), 'err'); }
+            });
             r.querySelector('[data-x=regen]')?.addEventListener('click', async () => {
                 info = await App.RegenerateMCPToken();
                 r.querySelector('[name=cmd]').value = info.command;
