@@ -104,15 +104,24 @@ function applyLanguage() {
     renderSftp();
     renderTabs();
     refreshMcpButton().catch(() => {});
+    fitTopbar(); // labels change width with the language
 }
 
 const uiZoom = () => (prefs.uiScale || 100) / 100;
+
+function fitTopbar() {
+    const bar = $('#topbar');
+    bar.classList.remove('compact');
+    if (bar.scrollWidth > bar.clientWidth + 1) bar.classList.add('compact');
+}
+new ResizeObserver(fitTopbar).observe($('#topbar'));
 
 function applyLayout() {
     document.documentElement.style.setProperty('--ui-zoom', uiZoom());
     $('#app').style.setProperty('--side-w', prefs.sideWidth + 'px');
     $('#app').classList.toggle('side-collapsed', prefs.sideCollapsed);
     $('#side-open').classList.toggle('hidden', !prefs.sideCollapsed);
+    fitTopbar();
 }
 
 // ---------------------------------------------------------------- utils
@@ -178,6 +187,12 @@ function ctxMenu(x, y, items) {
 const hideCtx = () => $('#ctx').classList.add('hidden');
 addEventListener('click', hideCtx);
 addEventListener('blur', hideCtx);
+addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || $('#ctx').classList.contains('hidden')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    hideCtx();
+}, true);
 
 /** modal(title, html, opts) — onOk(root) returns false to keep it open. Resolves to onOk's result or null. */
 function modal(title, bodyHtml, {okText = t('common.ok'), onOk, onMount, onCancel, wide = false, danger = false} = {}) {
@@ -197,14 +212,17 @@ function modal(title, bodyHtml, {okText = t('common.ok'), onOk, onMount, onCance
         };
         root.querySelector('[data-x=cancel]').onclick = cancel;
         root.querySelector('[data-x=ok]').onclick = ok;
-        bg.addEventListener('mousedown', (e) => { if (e.target === bg) cancel(); });
+        // Ignore the backdrop briefly so the second click of a double-click doesn't cancel right away.
+        const opened = performance.now();
+        bg.addEventListener('mousedown', (e) => { if (e.target === bg && performance.now() - opened > 400) cancel(); });
         bg.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') cancel();
             if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') { e.preventDefault(); ok(); }
         });
         onMount?.(root);
         // Focus again on the next tick: a terminal that triggered the modal can reclaim focus.
-        const first = root.querySelector('[autofocus]') || root.querySelector('input,select,textarea');
+        // A plain confirmation has no field: focus OK so Enter/Esc work and keys don't reach the terminal.
+        const first = root.querySelector('[autofocus]') || root.querySelector('input,select,textarea') || root.querySelector('[data-x=ok]');
         first?.focus();
         setTimeout(() => first?.focus(), 0);
     });
@@ -668,10 +686,11 @@ function activate(tab) {
     state.active = tab;
     App.SetActiveTab(tab.id).catch(() => {});
     for (const t of state.tabs) t.pane.classList.toggle('on', t === tab);
-    renderTabs();
+    syncActiveTab();
     requestAnimationFrame(() => {
         tab.fit.fit();
-        if (!$('#modal-root').children.length && !tab.pane.querySelector('.findbar')) tab.term.focus(); // don't steal focus from a dialog
+        // Don't steal focus from a dialog, the find bar or a tab being renamed.
+        if (!$('#modal-root').children.length && !tab.pane.querySelector('.findbar') && !$('#tabbar .rename')) tab.term.focus();
     });
     refreshSftpForActive();
 }
@@ -702,6 +721,20 @@ function renderTabs() {
     renderStatus();
 }
 
+// Mark the active tab without rebuilding the bar: rebuilding between the two
+// clicks of a double-click would swallow the dblclick (rename).
+function syncActiveTab() {
+    const els = $$('#tabbar .tab');
+    if (els.length !== state.tabs.length) return renderTabs();
+    for (const el of els) {
+        const on = el.dataset.id === state.active?.id;
+        el.classList.toggle('on', on);
+        el.setAttribute('aria-selected', on);
+    }
+    $('#btn-log').classList.toggle('on', !!state.active?.logging);
+    renderStatus();
+}
+
 $('#tabbar').addEventListener('click', (e) => {
     const el = e.target.closest('.tab');
     if (!el) return;
@@ -709,7 +742,8 @@ $('#tabbar').addEventListener('click', (e) => {
     if (e.target.closest('.x')) return closeTab(tab);
     if (e.target.type === 'checkbox') { tab.multi = e.target.checked; renderStatus(); return; }
     if (e.target.classList.contains('rename')) return;
-    activate(tab);
+    if (state.active !== tab) activate(tab);
+    else focusActive();
 });
 $('#tabbar').addEventListener('dblclick', (e) => {
     const el = e.target.closest('.tab');
@@ -746,7 +780,10 @@ function renameTab(tab) {
     el.replaceWith(input);
     input.focus();
     input.select();
+    let finished = false;
     const done = (save) => {
+        if (finished) return;
+        finished = true;
         if (save && input.value.trim()) {
             tab.title = input.value.trim();
             App.SetTabTitle(tab.id, tab.title).catch(() => {});
@@ -755,9 +792,10 @@ function renameTab(tab) {
         focusActive();
     };
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') done(true);
-        if (e.key === 'Escape') done(false);
         e.stopPropagation();
+        if (e.key !== 'Enter' && e.key !== 'Escape') return;
+        e.preventDefault(); // otherwise the Enter keypress lands in the terminal once it has focus
+        done(e.key === 'Enter');
     });
     input.addEventListener('blur', () => done(true));
 }
@@ -774,17 +812,22 @@ $('#tabbar').addEventListener('dragstart', (e) => {
 $('#tabbar').addEventListener('dragover', (e) => {
     if (!dragId) return;
     e.preventDefault();
-    $$('.tab').forEach((t) => t.classList.remove('drop-before'));
-    e.target.closest('.tab')?.classList.add('drop-before');
+    $$('.tab').forEach((t) => t.classList.remove('drop-before', 'drop-after'));
+    const over = e.target.closest('.tab');
+    if (over && over.dataset.id !== dragId) over.classList.add(dropAfter(e, over) ? 'drop-after' : 'drop-before');
 });
+const dropAfter = (e, el) => { const r = el.getBoundingClientRect(); return e.clientX > r.left + r.width / 2; };
 $('#tabbar').addEventListener('drop', (e) => {
     if (!dragId) return;
     e.preventDefault();
     const over = e.target.closest('.tab');
+    const after = over && dropAfter(e, over);
     const from = state.tabs.findIndex((t) => t.id === dragId);
     const [moved] = state.tabs.splice(from, 1);
-    const to = over ? state.tabs.findIndex((t) => t.id === over.dataset.id) : state.tabs.length;
-    state.tabs.splice(to < 0 ? state.tabs.length : to, 0, moved);
+    let to = over ? state.tabs.findIndex((t) => t.id === over.dataset.id) : state.tabs.length;
+    if (to < 0) to = state.tabs.length;
+    else if (after) to++;
+    state.tabs.splice(to, 0, moved);
     dragId = null;
     renderTabs();
 });
@@ -1179,7 +1222,12 @@ $('#macro-list').addEventListener('contextmenu', (e) => {
         {label: t('common.run'), icon: 'play', fn: () => runMacro(m)},
         {label: t('common.edit'), icon: 'gear', fn: () => editMacro(m)},
         '-',
-        {label: t('common.delete'), icon: 'close', danger: true, fn: async () => { await App.DeleteMacro(m.id); loadMacros(); }},
+        {label: t('common.delete'), icon: 'close', danger: true, fn: async () => {
+            if (await modal(t('macro.deleteTitle'), `<p>${esc(t('macro.deleteBody', {name: m.name}))}</p>`, {okText: t('common.delete'), danger: true})) {
+                await App.DeleteMacro(m.id);
+                loadMacros();
+            }
+        }},
     ]);
 });
 
@@ -1269,7 +1317,7 @@ async function settingsDialog(before = null) {
     });
     if (ok) { savePrefs(); toast(t('set.saved'), 'ok'); }
 }
-$('#btn-settings').onclick = settingsDialog;
+$('#btn-settings').onclick = () => settingsDialog();
 
 // ---------------------------------------------------------------- MCP bridge
 

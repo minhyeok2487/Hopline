@@ -67,6 +67,7 @@ const ko = {
     'macro.lines': '{n}줄', 'macro.empty': '자주 쓰는 명령 묶음을<br>매크로로 저장해 두세요', 'macro.edit': '매크로 편집',
     'macro.noTarget': '실행할 연결된 탭이 없습니다', 'macro.ran': '"{name}" 실행 → {n}개 탭', 'macro.namePh': '예: 기본 점검',
     'macro.body': '명령 (한 줄에 하나씩, 줄마다 Enter를 보냅니다)', 'macro.delay': '줄 간격', 'macro.needName': '이름을 입력하세요',
+    'macro.deleteTitle': '매크로 삭제', 'macro.deleteBody': '"{name}" 매크로를 삭제할까요?',
     // settings
     'set.title': '설정', 'set.secView': '화면', 'set.lang': '언어', 'set.langAuto': '자동 (Windows 언어)',
     'set.uiScale': 'UI 크기', 'set.theme': '앱 테마', 'set.system': '시스템', 'set.dark': '다크', 'set.light': '라이트',
@@ -136,6 +137,7 @@ const en = {
     'macro.lines': '{n} lines', 'macro.empty': 'Save command sets you use often<br>as macros', 'macro.edit': 'Edit macro',
     'macro.noTarget': 'No connected tab to run on', 'macro.ran': 'Ran "{name}" on {n} tab(s)', 'macro.namePh': 'e.g. Health check',
     'macro.body': 'Commands (one per line; Enter is sent after each)', 'macro.delay': 'Line delay', 'macro.needName': 'Enter a name',
+    'macro.deleteTitle': 'Delete macro', 'macro.deleteBody': 'Delete the macro "{name}"?',
     'set.title': 'Settings', 'set.secView': 'Appearance', 'set.lang': 'Language', 'set.langAuto': 'Auto (Windows language)',
     'set.uiScale': 'UI size', 'set.theme': 'App theme', 'set.system': 'System', 'set.dark': 'Dark', 'set.light': 'Light',
     'set.secTerm': 'Terminal', 'set.scheme': 'Color scheme', 'set.schemeAuto': 'Auto (follows app theme)', 'set.font': 'Font', 'set.fontSize': 'Font size',
