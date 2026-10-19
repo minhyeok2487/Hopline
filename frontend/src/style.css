@@ -342,6 +342,18 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .modal .f h4:first-child { margin-top: 0; }
 .modal .chk { display: flex; align-items: center; gap: 7px; color: var(--fg) !important; }
 .modal .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.lg-box { display: grid; gap: 8px; min-width: 0; }
+.lg-steps input:not([type=checkbox]) { min-width: 0; width: 100%; }
+.lg-box.off { opacity: .55; }
+.lg-steps { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 6px 8px; align-items: center; }
+.lg-steps .lg-row { display: contents; }
+.lg-steps .hd { font-size: 11px; color: var(--dim); }
+.lg-steps .hint { grid-column: 1 / -1; margin: 0; }
+.lg-steps .acts { display: flex; gap: 0; }
+.lg-steps .acts button { padding: 3px 4px; }
+.lg-btns { justify-content: flex-start; }
+.modal .f .lg-btns > button { flex: none; }
+.lg-box > .hint { margin: 0; }
 .modal pre { margin: 0; max-height: 200px; overflow: auto; background: var(--term-bg); color: var(--fg); padding: 8px 10px; border-radius: 6px; user-select: text; font: 12px var(--mono); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; justify-self: start; }
 .modal .f .inline > .seg, .modal .f .inline > .chk { flex: none; }

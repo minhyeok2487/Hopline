@@ -233,7 +233,7 @@ func (a *App) newMCPServer() *mcp.Server {
 				if x.Kind == "serial" {
 					target = fmt.Sprintf("%s %d", x.ComPort, x.Baud)
 				}
-				fmt.Fprintf(&b, "- %s | id=%s | %s | folder=%s | %s | password_saved=%v\n", x.Name, x.ID, x.Kind, x.Folder, target, x.HasPassword || x.KeyPath != "")
+				fmt.Fprintf(&b, "- %s | id=%s | %s | folder=%s | %s | password_saved=%v | auto_logon=%v\n", x.Name, x.ID, x.Kind, x.Folder, target, x.HasPassword || x.KeyPath != "", hasLogon(x))
 			}
 			if b.Len() == 0 {
 				return text("No saved sessions."), nil, nil
@@ -300,8 +300,18 @@ func (a *App) newMCPServer() *mcp.Server {
 			if lc == nil {
 				return nil, nil, errors.New("the connection closed right after opening")
 			}
+			note := ""
+			if lc.logonDone != nil { // let the session's logon actions finish before the agent types
+				select {
+				case <-lc.logonDone:
+				case <-time.After(3 * time.Minute):
+					note = " (logon actions still running)"
+				case <-ctx.Done():
+					return nil, nil, ctx.Err()
+				}
+			}
 			time.Sleep(1500 * time.Millisecond)
-			return text(fmt.Sprintf("tab=%s (%s) connected\n---\n%s", connID, sess.Name, lc.out.tail(30))), nil, nil
+			return text(fmt.Sprintf("tab=%s (%s) connected%s\n---\n%s", connID, sess.Name, note, lc.out.tail(30))), nil, nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "run_command", Description: "Send a command line to a tab and return its output. Finishes when output goes idle, a shell/CLI prompt appears, `expect` matches, or the timeout hits. For long-running commands pass `expect` (e.g. the prompt) and a larger timeout_sec."},

@@ -75,6 +75,12 @@ func (c *capture) text() string {
 	return plain(c.buf.String())
 }
 
+func (c *capture) reset() {
+	c.mu.Lock()
+	c.buf.Reset()
+	c.mu.Unlock()
+}
+
 func (c *capture) size() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()

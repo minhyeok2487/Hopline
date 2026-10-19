@@ -35,6 +35,8 @@ type liveConn struct {
 	log   *os.File
 
 	out outTap // recent output + MCP captures
+
+	logonDone chan struct{} // closed when logon actions finish; nil if the session has none
 }
 
 // App is bound to the frontend; exported methods are callable from JS.
@@ -78,7 +80,7 @@ func (a *App) shutdown(ctx context.Context) {
 
 // ---------- sessions / macros ----------
 
-func (a *App) ListSessions() []Session { return a.store.Sessions() }
+func (a *App) ListSessions() []Session { return forUI(a.store.Sessions()) }
 
 func (a *App) SaveSession(s Session, password string, savePassword bool) (Session, error) {
 	if s.Kind == "" {
@@ -94,7 +96,11 @@ func (a *App) SaveSession(s Session, password string, savePassword bool) (Sessio
 			s.Name = s.Host
 		}
 	}
-	return a.store.Put(s, password, savePassword)
+	saved, err := a.store.Put(s, password, savePassword)
+	if err != nil {
+		return saved, err
+	}
+	return forUI([]Session{saved})[0], nil
 }
 
 // SetSessionPassword stores a password for an existing session (used after a prompt).
@@ -173,6 +179,12 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 
 	lc := &liveConn{id: connID, name: s.Name, sessionID: s.ID, target: targetOf(s)}
 	out := &emitter{a: a, lc: lc}
+	// Capture from the first byte so a prompt printed right after connecting isn't missed.
+	var logonCap *capture
+	if hasLogon(s) {
+		logonCap = lc.out.startCapture()
+		lc.logonDone = make(chan struct{})
+	}
 	var wait func() string
 	switch s.Kind {
 	case "serial":
@@ -202,6 +214,9 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 	a.conns[connID] = lc
 	a.mu.Unlock()
 	go func() { a.closeConn(lc, wait()) }()
+	if logonCap != nil {
+		go a.runLogon(lc, s, logonCap)
+	}
 	return nil
 }
 

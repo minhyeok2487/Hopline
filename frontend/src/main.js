@@ -346,7 +346,8 @@ $('#sess-tree').addEventListener('contextmenu', (e) => {
     ctxMenu(e.clientX, e.clientY, [
         {label: t('common.connect'), icon: 'play', fn: () => openSession(s)},
         {label: t('common.edit'), icon: 'gear', fn: () => editSession(s)},
-        {label: t('common.duplicate'), icon: 'plus', fn: () => editSession({...s, id: '', name: s.name + ' ' + t('sess.copySuffix'), hasPassword: false})},
+        {label: t('common.duplicate'), icon: 'plus', fn: () => editSession({...s, id: '', name: s.name + ' ' + t('sess.copySuffix'), hasPassword: false,
+            logonSteps: (s.logonSteps || []).map((st) => ({...st, id: '', hasSecret: false}))})},
         '-',
         {label: t('common.delete'), icon: 'close', danger: true, fn: async () => {
             if (await modal(t('sess.deleteTitle'), `<p>${esc(t('sess.deleteBody', {name: s.name}))}</p>`, {okText: t('common.delete'), danger: true})) {
@@ -388,12 +389,23 @@ async function editSession(s) {
         <label class="ser">${t('f.dataBits')}</label><select class="ser" name="dataBits">${[8, 7, 6, 5].map((b) => `<option ${s.dataBits === b ? 'selected' : ''}>${b}</option>`).join('')}</select>
         <label class="ser">${t('f.parity')}</label><select class="ser" name="parity"><option value="N">${t('f.parityN')}</option><option value="E">${t('f.parityE')}</option><option value="O">${t('f.parityO')}</option></select>
         <label class="ser">${t('f.stopBits')}</label><select class="ser" name="stopBits"><option>1</option><option>2</option></select>
+
+        <h4>${t('lg.sec')}</h4>
+        <span></span><label class="chk"><input type="checkbox" name="autoLogon" ${s.autoLogon ? 'checked' : ''}/> ${t('lg.enable')}</label>
+        <span></span><div class="lg-box">
+            <label class="chk"><input type="checkbox" name="logonCR" ${s.logonCR ? 'checked' : ''}/> ${t('lg.cr')}</label>
+            <div class="lg-steps"></div>
+            <div class="inline lg-btns"><button type="button" data-x="lg-add">${icon('plus')}${t('lg.add')}</button><button type="button" data-x="lg-enable">${t('lg.preset')}</button></div>
+            <p class="hint">${t('lg.hint')}</p>
+        </div>
     </div>`;
 
     let kind = s.kind;
     const saved = await modal(isNew ? t('sess.new') : t('sess.edit'), body, {
         okText: t('common.save'),
+        wide: true,
         onMount: (r) => {
+            mountLogonEditor(r, s.logonSteps || []);
             r.querySelector('[name=parity]').value = s.parity || 'N';
             r.querySelector('[name=stopBits]').value = s.stopBits || '1';
             const sync = () => {
@@ -432,6 +444,11 @@ async function editSession(s) {
             };
             if (out.kind === 'ssh' && !out.host) { toast(t('sess.needHost'), 'err'); r.querySelector('[name=host]').focus(); return false; }
             if (out.kind === 'serial' && !out.comPort) { toast(t('sess.needCom'), 'err'); return false; }
+            out.autoLogon = r.querySelector('[name=autoLogon]').checked;
+            out.logonCR = r.querySelector('[name=logonCR]').checked;
+            out.logonSteps = readLogonSteps(r);
+            const blank = out.logonSteps.find((st) => st.hide && !st.send && !st.hasSecret);
+            if (out.autoLogon && blank) { toast(t('lg.needSecret'), 'err'); return false; }
             try {
                 return await App.SaveSession(out, r.querySelector('[name=pw]').value, r.querySelector('[name=save]').checked);
             } catch (e) {
@@ -445,6 +462,66 @@ async function editSession(s) {
         toast(t('sess.saved', {name: saved.name}), 'ok');
         loadSessions();
     }
+}
+
+// Logon actions editor: one row per expect/send step.
+const sendPh = (st) => (!st.hide ? t('lg.sendPh') : st.hasSecret ? t('lg.secretSaved') : t('lg.secretPh'));
+
+function mountLogonEditor(r, steps) {
+    const box = r.querySelector('.lg-steps');
+    const head = `<span class="hd">${t('lg.expect')}</span><span class="hd">${t('lg.send')}</span><span class="hd">${t('lg.hide')}</span><span></span>`;
+    const row = (st) => `<div class="lg-row" data-id="${esc(st.id || '')}" data-secret="${st.hasSecret ? 1 : 0}">
+        <input class="lg-exp" value="${esc(st.expect)}" placeholder="${t('lg.expectPh')}" spellcheck="false"/>
+        <input class="lg-send" type="${st.hide ? 'password' : 'text'}" value="${esc(st.hide ? '' : st.send)}"
+            placeholder="${sendPh(st)}" spellcheck="false"/>
+        <input class="lg-hide" type="checkbox" ${st.hide ? 'checked' : ''} title="${t('lg.hide')}"/>
+        <span class="acts"><button type="button" class="ghost icon" data-a="up" title="${t('lg.up')}">${icon('arrowUp')}</button><button type="button" class="ghost icon" data-a="down" title="${t('lg.down')}">${icon('arrowDown')}</button><button type="button" class="ghost icon" data-a="del" title="${t('common.delete')}">${icon('close')}</button></span></div>`;
+    const render = (list) => { box.innerHTML = list.length ? head + list.map(row).join('') : `<p class="hint">${t('lg.none')}</p>`; };
+    const sync = () => r.querySelector('.lg-box').classList.toggle('off', !r.querySelector('[name=autoLogon]').checked);
+    render(steps);
+    sync();
+    r.querySelector('[name=autoLogon]').addEventListener('change', sync);
+    const add = (list) => {
+        render([...readLogonSteps(r, true), ...list]);
+        if (!r.querySelector('[name=autoLogon]').checked) { r.querySelector('[name=autoLogon]').checked = true; sync(); }
+        // Focus what still needs typing: a new secret, else the first new row.
+        const rows = [...box.querySelectorAll('.lg-row')].slice(-list.length);
+        const k = list.findIndex((st) => st.hide && !st.send);
+        rows[Math.max(k, 0)]?.querySelector(k >= 0 || list[0].expect ? '.lg-send' : '.lg-exp').focus();
+    };
+    r.querySelector('[data-x=lg-add]').onclick = () => add([{expect: '', send: ''}]);
+    r.querySelector('[data-x=lg-enable]').onclick = () => add([{expect: '>', send: 'enable'}, {expect: 'assword:', send: '', hide: true}]);
+    box.addEventListener('change', (e) => {
+        if (!e.target.classList.contains('lg-hide')) return;
+        const el = e.target.closest('.lg-row');
+        const send = el.querySelector('.lg-send');
+        send.type = e.target.checked ? 'password' : 'text';
+        send.placeholder = sendPh({hide: e.target.checked, hasSecret: el.dataset.secret === '1'});
+    });
+    box.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-a]');
+        if (!b) return;
+        const list = readLogonSteps(r, true);
+        const i = [...box.querySelectorAll('.lg-row')].indexOf(b.closest('.lg-row'));
+        if (b.dataset.a === 'del') list.splice(i, 1);
+        else {
+            const j = b.dataset.a === 'up' ? i - 1 : i + 1;
+            if (j < 0 || j >= list.length) return;
+            [list[i], list[j]] = [list[j], list[i]];
+        }
+        render(list);
+    });
+}
+
+// keepEmpty: keep blank rows (while editing); otherwise rows with nothing in them are dropped.
+function readLogonSteps(r, keepEmpty = false) {
+    return [...r.querySelectorAll('.lg-row')].map((el) => ({
+        id: el.dataset.id,
+        expect: el.querySelector('.lg-exp').value,
+        send: el.querySelector('.lg-send').value,
+        hide: el.querySelector('.lg-hide').checked,
+        hasSecret: el.dataset.secret === '1',
+    })).filter((st) => keepEmpty || st.expect || st.send || (st.hide && st.hasSecret));
 }
 
 // ---------------------------------------------------------------- recents (empty state)
@@ -530,6 +607,12 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
 
     EventsOn('data:' + id, (b64) => term.write(b64ToBytes(b64)));
     EventsOn('closed:' + id, (reason) => markClosed(tab, reason));
+    EventsOn('logon:' + id, (ev) => {
+        if (!ev.error) return;
+        const msg = t('lg.err.' + ev.error, {step: ev.step, total: ev.total, expect: ev.expect});
+        term.write(`\r\n\x1b[33m── ${msg} ──\x1b[0m\r\n`);
+        toast(msg, 'err');
+    });
 
     term.onData((d) => {
         if (tab.status === 'closed') {
@@ -666,7 +749,7 @@ async function closeTab(tab, force = false) {
     }
     App.Disconnect(tab.id);
     hideConnecting(tab);
-    EventsOff('data:' + tab.id, 'closed:' + tab.id);
+    EventsOff('data:' + tab.id, 'closed:' + tab.id, 'logon:' + tab.id);
     tab.term.dispose();
     tab.pane.remove();
     const i = state.tabs.indexOf(tab);

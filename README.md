@@ -39,6 +39,7 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 **Working on many devices**
 - Multi-exec: type once into every checked tab
 - Macros: named command lists sent line by line with a configurable delay
+- Logon actions: expect/send steps run after connecting (enable, console login, jump hosts), with hidden values encrypted
 - Per-tab session logs saved as plain text (escape codes stripped)
 
 **Comfort**

@@ -11,6 +11,7 @@ This guide walks through everyday use of Hopline: installing it, saving sessions
 - [Working in the terminal](#working-in-the-terminal)
 - [SFTP file panel](#sftp-file-panel)
 - [Serial console](#serial-console)
+- [Logon actions (enable, jump hosts)](#logon-actions-enable-jump-hosts)
 - [Multi-exec and macros](#multi-exec-and-macros)
 - [Session logs](#session-logs)
 - [Settings](#settings)
@@ -115,6 +116,26 @@ Create a session with **Type: Serial (COM)**:
 - **Port** lists the COM ports Windows currently sees, with the adapter name when available. Click the refresh button after plugging in a USB console cable.
 - Common console settings are **9600 8N1** (Cisco and most switches) or **115200 8N1**.
 - If the port is not listed, install the driver for your USB-serial adapter (FTDI, Prolific, Silicon Labs CP210x) and check Device Manager.
+
+## Logon actions (enable, jump hosts)
+
+In the session editor, **Logon actions** holds *expect → send* steps that Hopline types for you every time the session connects. They work for SSH and serial sessions.
+
+- When the **Expect** text appears, Hopline types **Send** and presses Enter. An empty Expect sends right away.
+- Values marked **Hide** (passwords) are encrypted with your Windows account, are not shown again in the editor, and are never passed to AI assistants.
+- **Send Enter first** wakes a serial console that waits silently.
+- If a step's text does not appear within 30 seconds, Hopline stops and tells you which step in the terminal and in a notification.
+
+| Use | Expect | Send | Hide |
+|---|---|---|---|
+| Enable mode | `>` | `enable` | |
+| | `assword:` | enable password | ✓ |
+| Serial console login (with Send Enter first) | `sername:` | `admin` | |
+| | `assword:` | password | ✓ |
+| Hop through a jump host | `$ ` | `ssh admin@10.0.0.2` | |
+| | `assword:` | device password | ✓ |
+
+**Add enable example** inserts the two enable steps; just fill in the password. Matching is case-sensitive, so `assword:` catches both `Password:` and `password:`.
 
 ## Multi-exec and macros
 

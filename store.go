@@ -34,6 +34,22 @@ type Session struct {
 	DataBits int    `json:"dataBits"`
 	Parity   string `json:"parity"`   // N | E | O
 	StopBits string `json:"stopBits"` // 1 | 2
+
+	// Logon actions: after connecting, wait for each Expect text and answer with Send.
+	AutoLogon  bool        `json:"autoLogon"`
+	LogonCR    bool        `json:"logonCR"` // send Enter first (wakes serial consoles)
+	LogonSteps []LogonStep `json:"logonSteps"`
+}
+
+// LogonStep is one expect/send pair. Hidden sends (passwords) are stored
+// DPAPI-encrypted in Secret and never sent to the UI.
+type LogonStep struct {
+	ID        string `json:"id"`
+	Expect    string `json:"expect"` // "" = send right away
+	Send      string `json:"send"`   // Enter is appended
+	Hide      bool   `json:"hide"`
+	Secret    string `json:"secret,omitempty"`
+	HasSecret bool   `json:"hasSecret"`
 }
 
 // Macro is a named list of commands sent line by line.
@@ -189,6 +205,15 @@ func (s *Store) Put(in Session, password string, savePassword bool) (Session, er
 		in.Password = base64.StdEncoding.EncodeToString(enc)
 	}
 	in.HasPassword = in.Password != ""
+	var old []LogonStep
+	if idx >= 0 {
+		old = s.sessions[idx].LogonSteps
+	}
+	steps, err := mergeSteps(in.LogonSteps, old)
+	if err != nil {
+		return Session{}, err
+	}
+	in.LogonSteps = steps
 	if idx >= 0 {
 		s.sessions[idx] = in
 	} else {
@@ -207,6 +232,58 @@ func (s *Store) Delete(id string) error {
 		}
 	}
 	return errors.New("session not found")
+}
+
+// mergeSteps encrypts newly typed hidden sends and keeps the stored secret of a
+// hidden step whose send was left empty (the UI never sees it).
+func mergeSteps(in, old []LogonStep) ([]LogonStep, error) {
+	out := make([]LogonStep, 0, len(in))
+	for _, st := range in {
+		if st.ID == "" {
+			st.ID = newID()
+		}
+		if !st.Hide {
+			st.Secret = ""
+		} else if st.Send != "" {
+			enc, err := protect([]byte(st.Send))
+			if err != nil {
+				return nil, err
+			}
+			st.Secret, st.Send = base64.StdEncoding.EncodeToString(enc), ""
+		} else {
+			st.Secret = ""
+			for _, o := range old {
+				if o.ID == st.ID {
+					st.Secret = o.Secret
+				}
+			}
+		}
+		st.HasSecret = st.Secret != ""
+		out = append(out, st)
+	}
+	return out, nil
+}
+
+// forUI drops encrypted logon secrets from a copy of the sessions.
+func forUI(list []Session) []Session {
+	for i := range list {
+		steps := make([]LogonStep, len(list[i].LogonSteps))
+		for j, st := range list[i].LogonSteps {
+			st.Secret = ""
+			steps[j] = st
+		}
+		list[i].LogonSteps = steps
+	}
+	return list
+}
+
+func decryptString(b64 string) (string, error) {
+	enc, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return "", err
+	}
+	pw, err := unprotect(enc)
+	return string(pw), err
 }
 
 // Password returns the decrypted stored password ("" if none).

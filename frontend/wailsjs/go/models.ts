@@ -55,6 +55,28 @@ export namespace main {
 		}
 	}
 	
+	export class LogonStep {
+	    id: string;
+	    expect: string;
+	    send: string;
+	    hide: boolean;
+	    secret?: string;
+	    hasSecret: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogonStep(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.expect = source["expect"];
+	        this.send = source["send"];
+	        this.hide = source["hide"];
+	        this.secret = source["secret"];
+	        this.hasSecret = source["hasSecret"];
+	    }
+	}
 	export class MCPInfo {
 	    enabled: boolean;
 	    running: boolean;
@@ -127,6 +149,9 @@ export namespace main {
 	    dataBits: number;
 	    parity: string;
 	    stopBits: string;
+	    autoLogon: boolean;
+	    logonCR: boolean;
+	    logonSteps: LogonStep[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Session(source);
@@ -149,7 +174,28 @@ export namespace main {
 	        this.dataBits = source["dataBits"];
 	        this.parity = source["parity"];
 	        this.stopBits = source["stopBits"];
+	        this.autoLogon = source["autoLogon"];
+	        this.logonCR = source["logonCR"];
+	        this.logonSteps = this.convertValues(source["logonSteps"], LogonStep);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
