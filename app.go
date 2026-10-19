@@ -11,8 +11,10 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"fyne.io/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -50,6 +52,9 @@ type App struct {
 	dialing   map[string]context.CancelFunc
 
 	mcp mcpState
+
+	tray     trayState
+	quitting atomic.Bool
 }
 
 func NewApp() *App {
@@ -63,9 +68,11 @@ func (a *App) startup(ctx context.Context) {
 			println("MCP start failed:", err.Error())
 		}
 	}
+	a.startTray()
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	systray.Quit()
 	a.stopMCP()
 	a.mu.Lock()
 	all := make([]*liveConn, 0, len(a.conns))

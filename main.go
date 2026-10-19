@@ -30,8 +30,14 @@ func main() {
 			EnableFileDrop:     true,
 			DisableWebViewDrop: true,
 		},
-		OnStartup:  app.startup,
-		OnShutdown: app.shutdown,
+		StartHidden: startHidden(),
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "hopline-7c2f1e9a-5b3d-4e8a-9f61-2d4c8b0a1e37",
+			OnSecondInstanceLaunch: func(options.SecondInstanceData) { app.ShowWindow() },
+		},
+		OnStartup:     app.startup,
+		OnShutdown:    app.shutdown,
+		OnBeforeClose: app.beforeClose,
 		Bind: []interface{}{
 			app,
 		},

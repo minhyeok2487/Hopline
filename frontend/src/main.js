@@ -706,6 +706,7 @@ async function connectTab(tab, password = '') {
         const msg = String(err);
         if (msg.includes('NEED_PASSWORD') || msg.includes('AUTH_FAILED')) {
             if (msg.includes('AUTH_FAILED')) term.write(`\x1b[31m${t('conn.authFailed')}\x1b[0m\r\n`);
+            App.ShowWindow(); // the window may be hidden in the tray (e.g. an AI opened this tab)
             const r = await promptPassword(t('pw.title', {name: tab.title}), !tab.adhoc);
             if (r && r.pw) {
                 if (r.save) await App.SetSessionPassword(tab.session.id, r.pw).then(loadSessions).catch((e) => toast(String(e), 'err'));
@@ -1343,6 +1344,8 @@ function schemePreview(name) {
 async function settingsDialog(before = null) {
     if ($('.modal-bg')) return;
     before = before ?? JSON.stringify(prefs); // kept across a language re-render so Cancel still reverts
+    const [closeToTray, autostart] = await Promise.all([App.GetCloseToTray(), App.GetAutostart()]).catch(() => [true, false]);
+    if ($('.modal-bg')) return;
     const seg = (key, opts) => `<div class="seg" data-pref="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(prefs[key]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     const chk = (key, label) => `<span></span><label class="chk"><input type="checkbox" data-pref="${key}" ${prefs[key] ? 'checked' : ''}/> ${label}</label>`;
     const body = `<div class="f">
@@ -1363,6 +1366,9 @@ async function settingsDialog(before = null) {
         ${chk('rightClickPaste', t('set.rightClickPaste'))}
         ${chk('confirmMultiline', t('set.confirmMultiline'))}
         ${chk('confirmClose', t('set.confirmClose'))}
+        <h4>${t('set.secWindow')}</h4>
+        <span></span><label class="chk"><input type="checkbox" name="closeToTray" ${closeToTray ? 'checked' : ''}/> ${t('set.closeToTray')}</label>
+        <span></span><label class="chk"><input type="checkbox" name="autostart" ${autostart ? 'checked' : ''}/> ${t('set.autostart')}</label>
     </div>`;
     const ok = await modal(t('set.title'), body, {
         okText: t('common.save'),
@@ -1397,6 +1403,15 @@ async function settingsDialog(before = null) {
             });
         },
         onCancel: () => { prefs = JSON.parse(before); applyLanguage(); applyLayout(); applyTheme(); },
+        onOk: async (r) => {
+            const tray = r.querySelector('[name=closeToTray]').checked;
+            const auto = r.querySelector('[name=autostart]').checked;
+            try {
+                if (tray !== closeToTray) await App.SetCloseToTray(tray);
+                if (auto !== autostart) await App.SetAutostart(auto);
+            } catch (e) { toast(String(e), 'err'); return false; }
+            return true;
+        },
     });
     if (ok) { savePrefs(); toast(t('set.saved'), 'ok'); }
 }
@@ -1469,6 +1484,19 @@ async function mcpDialog() {
     refreshMcpButton();
 }
 $('#btn-mcp').onclick = mcpDialog;
+
+// ---------------------------------------------------------------- close to tray
+
+EventsOn('app:closeAsk', async () => {
+    if ($('.modal-bg')) { App.ShowWindow(); return; }
+    const hide = await modal(t('tray.title'), `<p>${t('tray.body')}</p>
+        <p class="hint">${t('tray.change')}</p>
+        <div class="inline"><button type="button" data-x="quit">${t('tray.quitNow')}</button></div>`, {
+        okText: t('tray.hide'),
+        onMount: (r) => { r.querySelector('[data-x=quit]').onclick = () => App.QuitApp(); },
+    });
+    if (hide) App.HideWindow(true);
+});
 
 // ---------------------------------------------------------------- boot
 

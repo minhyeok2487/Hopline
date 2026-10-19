@@ -71,6 +71,9 @@ type Settings struct {
 	MCPPort    int    `json:"mcpPort"`
 	MCPToken   string `json:"mcpToken"`
 	UIPrefs    string `json:"uiPrefs,omitempty"`
+
+	CloseToTray     *bool `json:"closeToTray,omitempty"` // nil = default (on)
+	TrayNoticeShown bool  `json:"trayNoticeShown,omitempty"`
 }
 
 type storeFile struct {

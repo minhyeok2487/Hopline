@@ -26,12 +26,24 @@ export function Disconnect(arg1) {
   return window['go']['main']['App']['Disconnect'](arg1);
 }
 
+export function GetAutostart() {
+  return window['go']['main']['App']['GetAutostart']();
+}
+
+export function GetCloseToTray() {
+  return window['go']['main']['App']['GetCloseToTray']();
+}
+
 export function GetMCPInfo() {
   return window['go']['main']['App']['GetMCPInfo']();
 }
 
 export function GetUIPrefs() {
   return window['go']['main']['App']['GetUIPrefs']();
+}
+
+export function HideWindow(arg1) {
+  return window['go']['main']['App']['HideWindow'](arg1);
 }
 
 export function ListMacros() {
@@ -52,6 +64,10 @@ export function OpenLogFolder() {
 
 export function PickKeyFile() {
   return window['go']['main']['App']['PickKeyFile']();
+}
+
+export function QuitApp() {
+  return window['go']['main']['App']['QuitApp']();
 }
 
 export function RegenerateMCPToken() {
@@ -84,6 +100,14 @@ export function SaveUIPrefs(arg1) {
 
 export function SetActiveTab(arg1) {
   return window['go']['main']['App']['SetActiveTab'](arg1);
+}
+
+export function SetAutostart(arg1) {
+  return window['go']['main']['App']['SetAutostart'](arg1);
+}
+
+export function SetCloseToTray(arg1) {
+  return window['go']['main']['App']['SetCloseToTray'](arg1);
 }
 
 export function SetLanguage(arg1) {
@@ -132,6 +156,10 @@ export function SftpUploadDialog(arg1, arg2) {
 
 export function SftpUploadPaths(arg1, arg2, arg3) {
   return window['go']['main']['App']['SftpUploadPaths'](arg1, arg2, arg3);
+}
+
+export function ShowWindow() {
+  return window['go']['main']['App']['ShowWindow']();
 }
 
 export function Write(arg1, arg2) {

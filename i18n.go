@@ -31,6 +31,10 @@ var messages = map[string]map[string]string{
 		"ssh.noSftp":           "SFTP unavailable (the server may not support the sftp subsystem): %w",
 		"ssh.hostKeyChanged":   "The host key has changed! (%s)\r\nThis could be a man-in-the-middle attack. If the device was reinstalled, remove its line from:\r\n%s",
 		"ssh.hostKeySaved":     "Saved new host key: %s %s",
+		"tray.open":            "Open Hopline",
+		"tray.quit":            "Quit",
+		"tray.mcpOn":           "MCP server running (port %d)",
+		"tray.mcpOff":          "MCP server off",
 	},
 	"ko": {
 		"dlg.pickKey":          "개인키 선택",
@@ -55,6 +59,10 @@ var messages = map[string]map[string]string{
 		"ssh.noSftp":           "SFTP 사용 불가 (서버가 sftp 서브시스템을 지원하지 않을 수 있음): %w",
 		"ssh.hostKeyChanged":   "호스트 키가 변경되었습니다! (%s)\r\n중간자 공격일 수 있습니다. 장비를 재설치한 경우라면 다음 파일에서 해당 줄을 지우세요:\r\n%s",
 		"ssh.hostKeySaved":     "새 호스트 키 저장: %s %s",
+		"tray.open":            "Hopline 열기",
+		"tray.quit":            "종료",
+		"tray.mcpOn":           "MCP 서버 실행 중 (포트 %d)",
+		"tray.mcpOff":          "MCP 서버 꺼짐",
 	},
 }
 
@@ -73,4 +81,5 @@ func (a *App) SetLanguage(lang string) {
 		lang = "en"
 	}
 	curLang.Store(lang)
+	a.refreshTray()
 }

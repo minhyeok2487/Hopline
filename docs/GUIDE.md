@@ -180,6 +180,8 @@ Open with the gear button or **Ctrl+,**. Changes preview immediately; **Cancel**
 | Copy on select | Copy as soon as you select text |
 | Right-click pastes | Off: right-click opens the menu instead |
 | Confirm multi-line paste, Confirm closing a connected tab | Safety prompts |
+| Closing the window hides it to the tray | On by default. See [Keep running in the tray](#keep-running-in-the-tray). |
+| Start in the tray when Windows starts | Launches Hopline hidden at sign-in so the MCP server is always available |
 
 ## AI assistants (MCP)
 
@@ -211,6 +213,16 @@ Hopline can run a local MCP server so an AI assistant such as Claude Code can op
 - Use device accounts with the least privilege you need.
 - **New token** in the MCP dialog invalidates the old token immediately; register the new command in Claude Code afterwards.
 - Turning the MCP server off closes the port.
+
+### Keep running in the tray
+
+Closing the window does not quit Hopline: it hides to the notification area (system tray), and the MCP server and open connections keep running, so an assistant can keep working with the window closed.
+
+- Click the tray icon, or run `Hopline.exe` again, to bring the window back with its tabs. Only one Hopline runs at a time.
+- Right-click the tray icon and choose **Quit** to exit for real.
+- If an assistant opens a session with no saved password while the window is hidden, the window comes back and asks you.
+- On Windows 11 a new tray icon starts in the hidden icons (**^**); drag it onto the taskbar to keep it visible.
+- Settings › Window: turn off **Closing the window hides it to the tray** to make the close button quit, or turn on **Start in the tray when Windows starts**.
 
 ## Troubleshooting
 

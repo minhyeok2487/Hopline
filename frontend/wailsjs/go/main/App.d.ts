@@ -14,9 +14,15 @@ export function DeleteSession(arg1:string):Promise<void>;
 
 export function Disconnect(arg1:string):Promise<void>;
 
+export function GetAutostart():Promise<boolean>;
+
+export function GetCloseToTray():Promise<boolean>;
+
 export function GetMCPInfo():Promise<main.MCPInfo>;
 
 export function GetUIPrefs():Promise<string>;
+
+export function HideWindow(arg1:boolean):Promise<void>;
 
 export function ListMacros():Promise<Array<main.Macro>>;
 
@@ -27,6 +33,8 @@ export function ListSessions():Promise<Array<main.Session>>;
 export function OpenLogFolder():Promise<void>;
 
 export function PickKeyFile():Promise<string>;
+
+export function QuitApp():Promise<void>;
 
 export function RegenerateMCPToken():Promise<main.MCPInfo>;
 
@@ -43,6 +51,10 @@ export function SaveSession(arg1:main.Session,arg2:string,arg3:boolean):Promise<
 export function SaveUIPrefs(arg1:string):Promise<void>;
 
 export function SetActiveTab(arg1:string):Promise<void>;
+
+export function SetAutostart(arg1:boolean):Promise<void>;
+
+export function SetCloseToTray(arg1:boolean):Promise<void>;
 
 export function SetLanguage(arg1:string):Promise<void>;
 
@@ -67,6 +79,8 @@ export function SftpRename(arg1:string,arg2:string,arg3:string):Promise<void>;
 export function SftpUploadDialog(arg1:string,arg2:string):Promise<void>;
 
 export function SftpUploadPaths(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
+
+export function ShowWindow():Promise<void>;
 
 export function Write(arg1:string,arg2:string):Promise<void>;
 

@@ -77,6 +77,7 @@ func (a *App) SetMCPEnabled(on bool, port int) (MCPInfo, error) {
 		return a.GetMCPInfo(), err
 	}
 	a.stopMCP()
+	defer a.refreshTray()
 	if on {
 		if err := a.startMCP(); err != nil {
 			info := a.GetMCPInfo()
