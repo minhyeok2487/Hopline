@@ -29,6 +29,7 @@ type liveConn struct {
 	id        string
 	name      string // tab title (session name, or what the user renamed it to)
 	sessionID string // "" for quick-connect tabs
+	kind      string // ssh | serial | telnet
 	target    string // user@host:port or COM port, for list_tabs
 	c         conn
 	ssh       *sshConn // nil for serial
@@ -99,6 +100,9 @@ func (a *App) SaveSession(s Session, password string, savePassword bool) (Sessio
 	if s.Kind == "" {
 		s.Kind = "ssh"
 	}
+	if s.Kind == "telnet" && s.Port == 0 {
+		s.Port = 23
+	}
 	if s.Kind == "ssh" && s.Port == 0 {
 		s.Port = 22
 	}
@@ -167,7 +171,9 @@ func (a *App) ConnectAdhoc(connID string, s Session, password string, cols, rows
 	if s.Kind == "" {
 		s.Kind = "ssh"
 	}
-	if s.Port == 0 {
+	if s.Port == 0 && s.Kind == "telnet" {
+		s.Port = 23
+	} else if s.Port == 0 {
 		s.Port = 22
 	}
 	return a.connect(connID, s, password, cols, rows)
@@ -191,7 +197,7 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 		cancel()
 	}()
 
-	lc := &liveConn{id: connID, name: s.Name, sessionID: s.ID, target: targetOf(s)}
+	lc := &liveConn{id: connID, name: s.Name, sessionID: s.ID, target: targetOf(s), kind: s.Kind}
 	out := &emitter{a: a, lc: lc}
 	// Capture from the first byte so a prompt printed right after connecting isn't missed.
 	var logonCap *capture
@@ -204,6 +210,15 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 	case "serial":
 		c, err := openSerial(s, out)
 		if err != nil {
+			return err
+		}
+		lc.c, wait = c, c.wait
+	case "telnet":
+		c, err := dialTelnet(ctx, s, cols, rows, out)
+		if err != nil {
+			if ctx.Err() != nil {
+				return errors.New("CANCELED")
+			}
 			return err
 		}
 		lc.c, wait = c, c.wait
@@ -229,7 +244,7 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 	a.mu.Unlock()
 	go func() { a.closeConn(lc, wait()) }()
 	if logonCap != nil {
-		go a.runLogon(lc, s, logonCap)
+		go a.runLogon(lc, s, logonCap, password)
 	}
 	return nil
 }
@@ -272,6 +287,13 @@ func (a *App) SetTabTitle(connID, title string) {
 func targetOf(s Session) string {
 	if s.Kind == "serial" {
 		return fmt.Sprintf("%s %d", s.ComPort, s.Baud)
+	}
+	if s.Kind == "telnet" {
+		port := s.Port
+		if port == 0 {
+			port = 23
+		}
+		return fmt.Sprintf("telnet %s:%d", s.Host, port)
 	}
 	t := s.Host
 	if s.User != "" {

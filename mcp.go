@@ -254,10 +254,7 @@ func (a *App) newMCPServer() *mcp.Server {
 			sort.Strings(ids)
 			for _, id := range ids {
 				lc := a.conns[id]
-				kind := "serial"
-				if lc.ssh != nil {
-					kind = "ssh"
-				}
+				kind := lc.kind
 				mark := ""
 				if id == a.activeTab {
 					mark = " | (active)"

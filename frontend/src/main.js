@@ -175,9 +175,11 @@ function ago(ts) {
     return t('time.day', {n: Math.floor(s / 86400)});
 }
 
-const targetOf = (s) => s.kind === 'serial'
-    ? `${s.comPort || '?'} · ${s.baud || 9600}`
-    : `${s.user ? s.user + '@' : ''}${s.host}${s.port && s.port !== 22 ? ':' + s.port : ''}`;
+const targetOf = (s) => {
+    if (s.kind === 'serial') return `${s.comPort || '?'} · ${s.baud || 9600}`;
+    if (s.kind === 'telnet') return `telnet ${s.user ? s.user + '@' : ''}${s.host}${s.port && s.port !== 23 ? ':' + s.port : ''}`;
+    return `${s.user ? s.user + '@' : ''}${s.host}${s.port && s.port !== 22 ? ':' + s.port : ''}`;
+};
 
 function ctxMenu(x, y, items) {
     const m = $('#ctx');
@@ -543,20 +545,21 @@ async function editSession(s) {
     s = {kind: 'ssh', port: 22, baud: 9600, dataBits: 8, parity: 'N', stopBits: '1', ...s};
     const folders = state.folders;
     const body = `<div class="f">
-        <label>${t('f.kind')}</label><div class="seg" data-seg="kind"><button type="button" data-v="ssh">SSH</button><button type="button" data-v="serial">${t('f.serial')}</button></div>
+        <label>${t('f.kind')}</label><div class="seg" data-seg="kind"><button type="button" data-v="ssh">SSH</button><button type="button" data-v="telnet">Telnet</button><button type="button" data-v="serial">${t('f.serial')}</button></div>
         <label>${t('common.name')}</label><input name="name" value="${esc(s.name)}" placeholder="${t('f.namePh')}"/>
         <label>${t('f.folder')}</label><input name="folder" value="${esc(s.folder)}" list="folders" placeholder="${t('f.folderPh')}"/>
         <datalist id="folders">${folders.map((f) => `<option value="${esc(f)}">`).join('')}</datalist>
 
-        <h4 class="ssh">${t('f.secConn')}</h4>
-        <label class="ssh">${t('f.host')}</label><input class="ssh" name="host" value="${esc(s.host)}" autofocus placeholder="${t('f.hostPh')}"/>
-        <label class="ssh">${t('common.port')}</label><input class="ssh" name="port" type="number" value="${s.port || 22}"/>
-        <label class="ssh">${t('f.user')}</label><input class="ssh" name="user" value="${esc(s.user)}"/>
-        <h4 class="ssh">${t('f.secAuth')}</h4>
-        <label class="ssh">${t('pw.label')}</label><input class="ssh" name="pw" type="password" placeholder="${s.hasPassword ? t('f.pwSaved') : t('f.pwAsk')}"/>
-        <span class="ssh"></span><label class="ssh chk"><input type="checkbox" name="save" ${s.hasPassword || isNew ? 'checked' : ''}/> ${t('pw.save')}</label>
+        <h4 class="ssh tel">${t('f.secConn')}</h4>
+        <label class="ssh tel">${t('f.host')}</label><input class="ssh tel" name="host" value="${esc(s.host)}" autofocus placeholder="${t('f.hostPh')}"/>
+        <label class="ssh tel">${t('common.port')}</label><input class="ssh tel" name="port" type="number" value="${s.port || 22}"/>
+        <label class="ssh tel">${t('f.user')}</label><input class="ssh tel" name="user" value="${esc(s.user)}"/>
+        <h4 class="ssh tel">${t('f.secAuth')}</h4>
+        <label class="ssh tel">${t('pw.label')}</label><input class="ssh tel" name="pw" type="password" placeholder="${s.hasPassword ? t('f.pwSaved') : t('f.pwAsk')}"/>
+        <span class="ssh tel"></span><label class="ssh tel chk"><input type="checkbox" name="save" ${s.hasPassword || isNew ? 'checked' : ''}/> ${t('pw.save')}</label>
         <label class="ssh">${t('f.key')}</label><div class="ssh inline"><input name="keyPath" value="${esc(s.keyPath)}" placeholder="${t('f.optional')}"/><button type="button" data-x="key">${t('common.browse')}</button></div>
         <span class="ssh"></span><label class="ssh chk"><input type="checkbox" name="legacy" ${s.legacy ? 'checked' : ''}/> ${t('f.legacy')}</label>
+        <p class="full hint tel">${t('f.telHint')}</p>
 
         <h4 class="ser">${t('f.secPort')}</h4>
         <label class="ser">${t('common.port')}</label><div class="ser inline"><select name="comPort"></select><button type="button" data-x="scan" title="${t('f.rescan')}">${icon('refresh')}</button></div>
@@ -584,12 +587,23 @@ async function editSession(s) {
             mountLogonEditor(r, s.logonSteps || []);
             r.querySelector('[name=parity]').value = s.parity || 'N';
             r.querySelector('[name=stopBits]').value = s.stopBits || '1';
+            const cls = {ssh: 'ssh', telnet: 'tel', serial: 'ser'};
             const sync = () => {
                 r.querySelectorAll('[data-seg=kind] button').forEach((b) => b.classList.toggle('on', b.dataset.v === kind));
-                r.querySelectorAll('.ssh').forEach((el) => el.classList.toggle('hidden', kind !== 'ssh'));
-                r.querySelectorAll('.ser').forEach((el) => el.classList.toggle('hidden', kind !== 'serial'));
+                r.querySelectorAll('.ssh, .tel, .ser').forEach((el) => el.classList.toggle('hidden', !el.classList.contains(cls[kind])));
+                const tel = kind === 'telnet';
+                r.querySelector('[name=user]').placeholder = tel ? t('f.telUserPh') : '';
+                if (!s.hasPassword) r.querySelector('[name=pw]').placeholder = tel ? t('f.telPwPh') : t('f.pwAsk');
             };
-            r.querySelectorAll('[data-seg=kind] button').forEach((b) => { b.onclick = () => { kind = b.dataset.v; sync(); }; });
+            r.querySelectorAll('[data-seg=kind] button').forEach((b) => {
+                b.onclick = () => {
+                    const port = r.querySelector('[name=port]');
+                    if (b.dataset.v === 'telnet' && port.value === '22') port.value = '23';
+                    if (b.dataset.v === 'ssh' && port.value === '23') port.value = '22';
+                    kind = b.dataset.v;
+                    sync();
+                };
+            });
             sync();
             const scan = async () => {
                 const sel = r.querySelector('[name=comPort]');
@@ -618,7 +632,7 @@ async function editSession(s) {
                 comPort: v('comPort'), baud: parseInt(v('baud'), 10) || 9600, dataBits: parseInt(v('dataBits'), 10),
                 parity: v('parity'), stopBits: v('stopBits'),
             };
-            if (out.kind === 'ssh' && !out.host) { toast(t('sess.needHost'), 'err'); r.querySelector('[name=host]').focus(); return false; }
+            if (out.kind !== 'serial' && !out.host) { toast(t('sess.needHost'), 'err'); r.querySelector('[name=host]').focus(); return false; }
             if (out.kind === 'serial' && !out.comPort) { toast(t('sess.needCom'), 'err'); return false; }
             out.autoLogon = r.querySelector('[name=autoLogon]').checked;
             out.logonCR = r.querySelector('[name=logonCR]').checked;
@@ -732,6 +746,12 @@ function renderRecents() {
 $('#quick').addEventListener('keydown', async (e) => {
     if (e.key === 'Escape') { e.target.value = ''; focusActive(); return; }
     if (e.key !== 'Enter') return;
+    const tm = e.target.value.trim().match(/^telnet(?::\/\/|\s+)(?:([^@\s]+)@)?([^:\s]+)(?::(\d+))?$/i);
+    if (tm) {
+        const [, tuser, thost, tport] = tm;
+        e.target.value = '';
+        return openSession({id: '', kind: 'telnet', name: `telnet ${thost}`, host: thost, user: tuser || '', port: parseInt(tport || '23', 10)}, true);
+    }
     const m = e.target.value.trim().match(/^(?:([^@\s]+)@)?([^:\s]+)(?::(\d+))?$/);
     if (!m) return toast(t('quick.format'), 'err');
     let [, user, host, port] = m;
@@ -786,7 +806,9 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
     EventsOn('closed:' + id, (reason) => markClosed(tab, reason));
     EventsOn('logon:' + id, (ev) => {
         if (!ev.error) return;
-        const msg = t('lg.err.' + ev.error, {step: ev.step, total: ev.total, expect: ev.expect});
+        const msg = ev.step === 0 && ev.error === 'timeout'
+            ? t('lg.err.login', {expect: ev.expect})
+            : t('lg.err.' + ev.error, {step: ev.step, total: ev.total, expect: ev.expect});
         term.write(`\r\n\x1b[33m── ${msg} ──\x1b[0m\r\n`);
         toast(msg, 'err');
     });
