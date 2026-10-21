@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: #0b0f17;
+  --color-panel: #111827;
+  --color-panel2: #161f30;
+  --color-line: #1f2a3c;
+  --color-fg: #e6edf6;
+  --color-dim: #94a3b8;
+  --color-faint: #64748b;
+  --color-acc: #4f9dff;
+  --color-acc2: #8b7bff;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-bad: #f87171;
+  --font-sans: var(--font-geist-sans), var(--font-kr), "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Cascadia Mono", "D2Coding", ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  word-break: keep-all;
+}
+
+/* Soft glow behind the hero and a faint grid, both decorative. */
+.glow {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(79, 157, 255, 0.18), transparent 70%),
+    radial-gradient(40% 40% at 85% 20%, rgba(139, 123, 255, 0.12), transparent 70%);
+}
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);
+}
+
+.text-grad {
+  background: linear-gradient(90deg, #7cc0ff, #a99bff 60%, #f0abfc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(22, 31, 48, 0.9), rgba(17, 24, 39, 0.9));
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+}
+
+.window {
+  border: 1px solid #263248;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0d1320;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-weight: 600;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--color-acc); color: #04101f; box-shadow: 0 10px 30px -10px rgba(79, 157, 255, 0.7); }
+.btn-primary:hover { background: #6aadff; }
+.btn-ghost { border: 1px solid var(--color-line); background: rgba(17, 24, 39, 0.6); }
+.btn-ghost:hover { border-color: #33435e; }
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border: 1px solid var(--color-line);
+  background: #0d1320;
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .btn:hover { transform: none; }
+}
