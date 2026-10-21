@@ -125,7 +125,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                 {d.ai.points.map((p, i) => (
                   <li key={p.title} className="flex gap-3">
                     <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-acc2/15 text-acc2">
-                      <Icon name={["plug", "eye", "shield", "lock"][i]} className="h-4 w-4" />
+                      <Icon name={["plug", "multi", "shield", "lock"][i]} className="h-4 w-4" />
                     </span>
                     <div>
                       <h3 className="font-semibold">{p.title}</h3>
