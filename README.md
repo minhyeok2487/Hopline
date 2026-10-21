@@ -25,7 +25,7 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 ![Hopline main window](docs/screenshots/main-dark.png)
 
 **Sessions and terminals**
-- Saved SSH and serial sessions in folders, with search and keyboard navigation
+- Saved SSH and serial sessions in nested folders (drag & drop, rename, connect all), with search and keyboard navigation
 - Tabs you can reorder, rename and duplicate; quick connect with `user@host[:port]`
 - Password, private-key and keyboard-interactive auth; an option for legacy key exchange and ciphers used by older switches and firewalls
 - Passwords are encrypted with Windows DPAPI, so only your Windows account can decrypt them

@@ -97,6 +97,7 @@ func (a *App) SaveSession(s Session, password string, savePassword bool) (Sessio
 	if s.Kind == "ssh" && s.Port == 0 {
 		s.Port = 22
 	}
+	s.Folder = cleanFolder(s.Folder)
 	if s.Name == "" {
 		if s.Kind == "serial" {
 			s.Name = s.ComPort

@@ -48,7 +48,7 @@ Click **+** in the Sessions panel to create a session, or right-click an existin
 | Field | Notes |
 |---|---|
 | Name | Shown in the list and on the tab. Defaults to the host. |
-| Folder | Type a new name or pick an existing one. Folders collapse in the list. |
+| Folder | Pick an existing folder or type a path; `/` makes subfolders (`HQ/Server room`). |
 | Host, Port, User | Port defaults to 22. |
 | Password | Leave empty to be asked on every connect. With **Save password** checked, it is stored encrypted (see below). |
 | Private key | Optional path to an OpenSSH or PEM key (`id_ed25519`, `id_rsa`, …). PuTTY `.ppk` files must be converted first. |
@@ -58,6 +58,13 @@ Tips:
 - Double-click a session or select it and press **Enter** to connect; **F2** edits it.
 - Type in **Search sessions** to filter by name, host, user or folder. Arrow keys move through the results.
 - A green dot next to a session means it has an open tab (`●2` = two tabs).
+
+**Folders**
+
+- Create one with the folder button next to **+**, or right-click empty space → **New folder**. Folders can be empty and can hold subfolders.
+- **Drag** a session onto a folder to move it, or onto empty space to move it to the top level. Folders can be dragged into other folders the same way. Right-click a session → **Move to folder…** does the same from a list.
+- Right-click a folder for **New session here, New subfolder, Rename folder, Connect all, Collapse/Expand all folders, Delete folder**. Deleting a folder never deletes sessions: its sessions and subfolders move up one level.
+- Click a folder to collapse it; Hopline remembers which folders you collapsed. Searching shows matches inside collapsed folders too.
 - The empty screen lists your **recent** connections for one-click reconnects.
 
 ## Authentication and host keys

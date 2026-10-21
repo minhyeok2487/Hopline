@@ -18,6 +18,14 @@ export function ConnectClaudeCode() {
   return window['go']['main']['App']['ConnectClaudeCode']();
 }
 
+export function CreateFolder(arg1) {
+  return window['go']['main']['App']['CreateFolder'](arg1);
+}
+
+export function DeleteFolder(arg1) {
+  return window['go']['main']['App']['DeleteFolder'](arg1);
+}
+
 export function DeleteMacro(arg1) {
   return window['go']['main']['App']['DeleteMacro'](arg1);
 }
@@ -54,6 +62,10 @@ export function HideWindow(arg1) {
   return window['go']['main']['App']['HideWindow'](arg1);
 }
 
+export function ListFolders() {
+  return window['go']['main']['App']['ListFolders']();
+}
+
 export function ListMacros() {
   return window['go']['main']['App']['ListMacros']();
 }
@@ -64,6 +76,10 @@ export function ListSerialPorts() {
 
 export function ListSessions() {
   return window['go']['main']['App']['ListSessions']();
+}
+
+export function MoveSession(arg1, arg2) {
+  return window['go']['main']['App']['MoveSession'](arg1, arg2);
 }
 
 export function OpenLogFolder() {
@@ -80,6 +96,10 @@ export function QuitApp() {
 
 export function RegenerateMCPToken() {
   return window['go']['main']['App']['RegenerateMCPToken']();
+}
+
+export function RenameFolder(arg1, arg2) {
+  return window['go']['main']['App']['RenameFolder'](arg1, arg2);
 }
 
 export function ReportOpenResult(arg1, arg2) {

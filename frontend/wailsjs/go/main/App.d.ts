@@ -10,6 +10,10 @@ export function ConnectAdhoc(arg1:string,arg2:main.Session,arg3:string,arg4:numb
 
 export function ConnectClaudeCode():Promise<main.ClaudeSetup>;
 
+export function CreateFolder(arg1:string):Promise<void>;
+
+export function DeleteFolder(arg1:string):Promise<void>;
+
 export function DeleteMacro(arg1:string):Promise<void>;
 
 export function DeleteSession(arg1:string):Promise<void>;
@@ -28,11 +32,15 @@ export function GetUIPrefs():Promise<string>;
 
 export function HideWindow(arg1:boolean):Promise<void>;
 
+export function ListFolders():Promise<Array<string>>;
+
 export function ListMacros():Promise<Array<main.Macro>>;
 
 export function ListSerialPorts():Promise<Array<main.SerialPortInfo>>;
 
 export function ListSessions():Promise<Array<main.Session>>;
+
+export function MoveSession(arg1:string,arg2:string):Promise<void>;
 
 export function OpenLogFolder():Promise<void>;
 
@@ -41,6 +49,8 @@ export function PickKeyFile():Promise<string>;
 export function QuitApp():Promise<void>;
 
 export function RegenerateMCPToken():Promise<main.MCPInfo>;
+
+export function RenameFolder(arg1:string,arg2:string):Promise<void>;
 
 export function ReportOpenResult(arg1:string,arg2:string):Promise<void>;
 

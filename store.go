@@ -79,6 +79,7 @@ type Settings struct {
 type storeFile struct {
 	Sessions []storedSession `json:"sessions"`
 	Macros   []Macro         `json:"macros"`
+	Folders  []string        `json:"folders,omitempty"` // folders that may hold no sessions
 	Settings Settings        `json:"settings"`
 }
 
@@ -88,6 +89,7 @@ type Store struct {
 	dir      string
 	sessions []Session
 	macros   []Macro
+	folders  []string
 	settings Settings
 }
 
@@ -136,12 +138,13 @@ func (s *Store) load() {
 		s.sessions = append(s.sessions, ss.Session)
 	}
 	s.macros = f.Macros
+	s.folders = f.Folders
 	s.settings = f.Settings
 }
 
 // saveLocked writes atomically; caller holds s.mu.
 func (s *Store) saveLocked() error {
-	f := storeFile{Macros: s.macros, Settings: s.settings}
+	f := storeFile{Macros: s.macros, Folders: s.folders, Settings: s.settings}
 	for _, ss := range s.sessions {
 		f.Sessions = append(f.Sessions, storedSession{Session: ss, EncPassword: ss.Password})
 	}
@@ -193,6 +196,7 @@ func (s *Store) Put(in Session, password string, savePassword bool) (Session, er
 		}
 	}
 	if idx >= 0 {
+		s.keepFolderLocked(s.sessions[idx].Folder)
 		in.Password = s.sessions[idx].Password
 	} else {
 		in.ID = newID()
@@ -230,6 +234,7 @@ func (s *Store) Delete(id string) error {
 	defer s.mu.Unlock()
 	for i, ss := range s.sessions {
 		if ss.ID == id {
+			s.keepFolderLocked(ss.Folder)
 			s.sessions = append(s.sessions[:i], s.sessions[i+1:]...)
 			return s.saveLocked()
 		}

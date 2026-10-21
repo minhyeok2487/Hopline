@@ -23,6 +23,7 @@ const state = {
     active: null,
     multi: false,
     collapsed: new Set(),
+    folders: [],
     selSession: null,
     sftp: {connId: null, path: '', entries: [], loading: false, error: ''},
     transfers: new Map(),
@@ -49,6 +50,7 @@ const DEFAULT_PREFS = {
     sideWidth: 270,
     sideCollapsed: false,
     recents: [],               // [{id} | {adhoc:{host,user,port}}, t]
+    collapsed: [],             // folder paths the user collapsed
 };
 let prefs = {...DEFAULT_PREFS};
 let saveTimer;
@@ -245,7 +247,9 @@ async function promptPassword(title, canSave) {
 // ---------------------------------------------------------------- sessions panel
 
 async function loadSessions() {
-    state.sessions = await App.ListSessions() || [];
+    const [sessions, folders] = await Promise.all([App.ListSessions(), App.ListFolders()]);
+    state.sessions = sessions || [];
+    state.folders = folders || [];
     renderSessions();
     renderRecents();
 }
@@ -262,35 +266,62 @@ function highlight(text, q) {
     return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
 }
 
+const folderName = (p) => p.slice(p.lastIndexOf('/') + 1);
+const folderParent = (p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '');
+const joinFolder = (a, b) => [a, b].filter(Boolean).join('/');
+const inFolder = (p, dir) => p === dir || p.startsWith(dir + '/');
+const sessionsIn = (dir) => state.sessions.filter((s) => inFolder(s.folder || '', dir));
+
+function saveCollapsed() {
+    prefs.collapsed = [...state.collapsed];
+    savePrefs();
+}
+
+// Folders are paths ("HQ/Rack 1"); the tree shows subfolders first, then sessions.
 function renderSessions() {
     const q = $('#sess-filter').value.trim().toLowerCase();
     const tree = $('#sess-tree');
     const list = state.sessions.filter((s) => !q || [s.name, s.host, s.user, s.folder, s.comPort].join(' ').toLowerCase().includes(q));
-    if (!list.length) {
-        tree.innerHTML = state.sessions.length
-            ? `<div class="empty">${icon('search')}<span>${esc(t('sess.noMatch', {q}))}</span></div>`
-            : `<div class="empty">${icon('terminal')}<span>${t('sess.none')}</span><button id="empty-add" class="primary">${icon('plus')}${t('sess.create')}</button></div>`;
-        $('#empty-add')?.addEventListener('click', () => editSession(null));
+    if (!state.sessions.length && !state.folders.length) {
+        tree.innerHTML = `<div class="empty">${icon('terminal')}<span>${t('sess.none')}</span><button id="empty-add" class="primary">${icon('plus')}${t('sess.create')}</button></div>`;
+        $('#empty-add').addEventListener('click', () => editSession(null));
         return;
     }
-    const groups = new Map();
-    for (const s of list) {
-        const f = s.folder || '';
-        if (!groups.has(f)) groups.set(f, []);
-        groups.get(f).push(s);
+    if (q && !list.length) {
+        tree.innerHTML = `<div class="empty">${icon('search')}<span>${esc(t('sess.noMatch', {q}))}</span></div>`;
+        return;
     }
-    let html = '';
-    for (const [f, items] of groups) {
-        const open = q || !state.collapsed.has(f);
-        if (f) html += `<div class="folder" data-folder="${esc(f)}">${icon(open ? 'chevDown' : 'chevRight')}${esc(f)}<span class="count">${items.length}</span></div>`;
-        if (!open) continue;
-        for (const s of items) {
-            const n = liveCount(s.id);
-            html += `<div class="item${f ? ' indent' : ''}${state.selSession === s.id ? ' sel' : ''}${n ? ' live' : ''}" data-id="${s.id}" title="${esc(targetOf(s))}">
-                <span class="ic">${icon(s.kind === 'serial' ? 'serial' : 'terminal')}</span><span class="nm">${highlight(s.name, q)}</span>
-                ${n ? `<span class="live-n" title="${t('sess.liveTabs', {n})}">●${n > 1 ? n : ''}</span>` : `<span class="sub">${esc(targetOf(s))}</span>`}</div>`;
+    const root = {folders: new Map(), items: []};
+    const node = (path) => {
+        let n = root;
+        let acc = '';
+        for (const seg of (path || '').split('/').filter(Boolean)) {
+            acc = joinFolder(acc, seg);
+            if (!n.folders.has(seg)) n.folders.set(seg, {path: acc, name: seg, folders: new Map(), items: []});
+            n = n.folders.get(seg);
         }
-    }
+        return n;
+    };
+    if (!q) state.folders.forEach(node); // empty folders too, except while searching
+    list.forEach((s) => node(s.folder).items.push(s));
+    const count = (n) => n.items.length + [...n.folders.values()].reduce((a, c) => a + count(c), 0);
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    let html = '';
+    const walk = (n, depth) => {
+        for (const f of [...n.folders.values()].sort(byName)) {
+            const open = q || !state.collapsed.has(f.path);
+            html += `<div class="folder" data-folder="${esc(f.path)}" draggable="true" style="--d:${depth}" title="${esc(f.path)}">
+                ${icon(open ? 'chevDown' : 'chevRight')}<span class="fic">${icon(open ? 'folderOpen' : 'folder')}</span><span class="nm">${esc(f.name)}</span><span class="count">${count(f)}</span></div>`;
+            if (open) walk(f, depth + 1);
+        }
+        for (const s of n.items.sort(byName)) {
+            const live = liveCount(s.id);
+            html += `<div class="item${state.selSession === s.id ? ' sel' : ''}${live ? ' live' : ''}" data-id="${s.id}" draggable="true" style="--d:${depth}" title="${esc(targetOf(s))}">
+                <span class="ic">${icon(s.kind === 'serial' ? 'serial' : 'terminal')}</span><span class="nm">${highlight(s.name, q)}</span>
+                ${live ? `<span class="live-n" title="${t('sess.liveTabs', {n: live})}">●${live > 1 ? live : ''}</span>` : `<span class="sub">${esc(targetOf(s))}</span>`}</div>`;
+        }
+    };
+    walk(root, 0);
     tree.innerHTML = html;
 }
 
@@ -300,13 +331,18 @@ $('#sess-filter').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { const first = $('#sess-tree .item'); if (first) openSession(state.sessions.find((s) => s.id === first.dataset.id)); }
 });
 $('#sess-add').onclick = () => editSession(null);
+$('#folder-add').onclick = () => newFolder('');
+
+function toggleFolder(path, open) {
+    if (open ?? state.collapsed.has(path)) state.collapsed.delete(path);
+    else state.collapsed.add(path);
+    saveCollapsed();
+    renderSessions();
+}
+
 $('#sess-tree').addEventListener('click', (e) => {
     const f = e.target.closest('.folder');
-    if (f) {
-        const k = f.dataset.folder;
-        state.collapsed.has(k) ? state.collapsed.delete(k) : state.collapsed.add(k);
-        return renderSessions();
-    }
+    if (f) return toggleFolder(f.dataset.folder);
     const it = e.target.closest('.item');
     if (it) selectSession(it.dataset.id);
 });
@@ -337,10 +373,82 @@ $('#sess-tree').addEventListener('dblclick', (e) => {
     const it = e.target.closest('.item');
     if (it) openSession(state.sessions.find((s) => s.id === it.dataset.id));
 });
+
+// ---- folder actions
+
+const folderOk = (fn) => fn().then(loadSessions).catch((e) => toast(String(e), 'err'));
+
+async function newFolder(parent) {
+    const name = await modal(parent ? t('sess.newSub') : t('sess.newFolder'), `<div class="f">
+        <label>${t('sess.folderName')}</label><input name="n" autofocus/>
+        <span></span><span class="hint">${esc(parent ? t('sess.createIn', {p: parent}) : t('sess.folderPathHint'))}</span></div>`, {
+        okText: t('common.create'),
+        onOk: (r) => r.querySelector('[name=n]').value.trim() || false,
+    });
+    if (!name) return;
+    if (parent) toggleFolder(parent, true);
+    folderOk(() => App.CreateFolder(joinFolder(parent, name)));
+}
+
+async function renameFolder(path) {
+    const name = await modal(t('sess.renameFolder'), `<div class="f"><label>${t('sess.folderName')}</label><input name="n" value="${esc(folderName(path))}" autofocus/></div>`, {
+        onOk: (r) => r.querySelector('[name=n]').value.trim().replace(/\//g, ' ') || false,
+    });
+    if (!name || name === folderName(path)) return;
+    const to = joinFolder(folderParent(path), name);
+    if (state.collapsed.delete(path)) { state.collapsed.add(to); saveCollapsed(); }
+    folderOk(() => App.RenameFolder(path, to));
+}
+
+async function deleteFolder(path) {
+    const n = sessionsIn(path).length;
+    const ok = await modal(t('sess.deleteFolder'), `<p>${esc(t('sess.deleteFolderBody', {name: folderName(path), n}))}</p>`, {okText: t('common.delete'), danger: true});
+    if (ok) folderOk(() => App.DeleteFolder(path));
+}
+
+async function connectFolder(path) {
+    const list = sessionsIn(path);
+    if (!list.length) return toast(t('sess.folderEmpty'), 'err');
+    if (list.length > 3 && !await modal(t('sess.connectAll', {n: list.length}), `<p>${esc(t('sess.connectAllBody', {name: folderName(path), n: list.length}))}</p>`, {okText: t('common.connect')})) return;
+    list.forEach((s) => openSession(s));
+}
+
+async function moveSessionDialog(s) {
+    const opts = ['', ...state.folders].map((f) => `<option value="${esc(f)}" ${f === (s.folder || '') ? 'selected' : ''}>${esc(f || t('sess.rootFolder'))}</option>`).join('');
+    const to = await modal(t('sess.moveTitle'), `<div class="f"><label>${t('f.folder')}</label><select name="f">${opts}</select></div>`, {
+        onOk: (r) => ({f: r.querySelector('[name=f]').value}),
+    });
+    if (to && to.f !== (s.folder || '')) folderOk(() => App.MoveSession(s.id, to.f));
+}
+
 $('#sess-tree').addEventListener('contextmenu', (e) => {
     e.preventDefault();
+    const f = e.target.closest('.folder');
+    if (f) {
+        const p = f.dataset.folder;
+        const n = sessionsIn(p).length;
+        return ctxMenu(e.clientX, e.clientY, [
+            {label: t('sess.newHere'), icon: 'plus', fn: () => { toggleFolder(p, true); editSession({folder: p}); }},
+            {label: t('sess.newSub'), icon: 'folderPlus', fn: () => newFolder(p)},
+            {label: t('sess.renameFolder'), fn: () => renameFolder(p)},
+            '-',
+            {label: t('sess.connectAll', {n}), icon: 'play', fn: () => connectFolder(p)},
+            {label: state.collapsed.size ? t('sess.expandAll') : t('sess.collapseAll'), fn: () => {
+                state.collapsed = state.collapsed.size ? new Set() : new Set(state.folders);
+                saveCollapsed();
+                renderSessions();
+            }},
+            '-',
+            {label: t('sess.deleteFolder'), icon: 'close', danger: true, fn: () => deleteFolder(p)},
+        ]);
+    }
     const it = e.target.closest('.item');
-    if (!it) return ctxMenu(e.clientX, e.clientY, [{label: t('sess.new'), icon: 'plus', fn: () => editSession(null)}]);
+    if (!it) {
+        return ctxMenu(e.clientX, e.clientY, [
+            {label: t('sess.new'), icon: 'plus', fn: () => editSession(null)},
+            {label: t('sess.newFolder'), icon: 'folderPlus', fn: () => newFolder('')},
+        ]);
+    }
     const s = state.sessions.find((x) => x.id === it.dataset.id);
     selectSession(s.id);
     ctxMenu(e.clientX, e.clientY, [
@@ -348,6 +456,7 @@ $('#sess-tree').addEventListener('contextmenu', (e) => {
         {label: t('common.edit'), icon: 'gear', fn: () => editSession(s)},
         {label: t('common.duplicate'), icon: 'plus', fn: () => editSession({...s, id: '', name: s.name + ' ' + t('sess.copySuffix'), hasPassword: false,
             logonSteps: (s.logonSteps || []).map((st) => ({...st, id: '', hasSecret: false}))})},
+        {label: t('sess.moveTo'), icon: 'folder', fn: () => moveSessionDialog(s)},
         '-',
         {label: t('common.delete'), icon: 'close', danger: true, fn: async () => {
             if (await modal(t('sess.deleteTitle'), `<p>${esc(t('sess.deleteBody', {name: s.name}))}</p>`, {okText: t('common.delete'), danger: true})) {
@@ -360,12 +469,68 @@ $('#sess-tree').addEventListener('contextmenu', (e) => {
     ]);
 });
 
+// ---- drag sessions and folders onto folders (or empty space for the top level)
+
+let treeDrag = null; // {id} for a session, {path} for a folder
+const dropFolder = (e) => {
+    const f = e.target.closest('.folder');
+    if (f) return f.dataset.folder;
+    const it = e.target.closest('.item');
+    if (it) return state.sessions.find((s) => s.id === it.dataset.id)?.folder || '';
+    return '';
+};
+const clearDropMarks = () => {
+    $$('#sess-tree .drop-into').forEach((el) => el.classList.remove('drop-into'));
+    $('#sess-tree').classList.remove('drop-root');
+};
+$('#sess-tree').addEventListener('dragstart', (e) => {
+    const it = e.target.closest('.item');
+    const f = e.target.closest('.folder');
+    if (it) treeDrag = {id: it.dataset.id};
+    else if (f) treeDrag = {path: f.dataset.folder};
+    else return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', it ? it.dataset.id : f.dataset.folder);
+});
+$('#sess-tree').addEventListener('dragover', (e) => {
+    if (!treeDrag) return;
+    const to = dropFolder(e);
+    const bad = treeDrag.path != null && inFolder(to, treeDrag.path);
+    clearDropMarks();
+    if (bad) return;
+    e.preventDefault();
+    if (!to) $('#sess-tree').classList.add('drop-root');
+    else $(`#sess-tree .folder[data-folder="${CSS.escape(to)}"]`)?.classList.add('drop-into');
+});
+$('#sess-tree').addEventListener('dragleave', (e) => { if (!e.currentTarget.contains(e.relatedTarget)) clearDropMarks(); });
+$('#sess-tree').addEventListener('drop', (e) => {
+    if (!treeDrag) return;
+    e.preventDefault();
+    const drag = treeDrag;
+    const to = dropFolder(e);
+    treeDrag = null;
+    clearDropMarks();
+    if (drag.id) {
+        const s = state.sessions.find((x) => x.id === drag.id);
+        if (!s || (s.folder || '') === to) return;
+        if (to) state.collapsed.delete(to);
+        folderOk(() => App.MoveSession(drag.id, to));
+    } else {
+        if (inFolder(to, drag.path)) return toast(t('sess.folderIntoSelf'), 'err');
+        const dest = joinFolder(to, folderName(drag.path));
+        if (dest === drag.path) return;
+        if (to) state.collapsed.delete(to);
+        folderOk(() => App.RenameFolder(drag.path, dest));
+    }
+});
+$('#sess-tree').addEventListener('dragend', () => { treeDrag = null; clearDropMarks(); });
+
 const BAUDS = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
 
 async function editSession(s) {
     const isNew = !s || !s.id;
     s = {kind: 'ssh', port: 22, baud: 9600, dataBits: 8, parity: 'N', stopBits: '1', ...s};
-    const folders = [...new Set(state.sessions.map((x) => x.folder).filter(Boolean))];
+    const folders = state.folders;
     const body = `<div class="f">
         <label>${t('f.kind')}</label><div class="seg" data-seg="kind"><button type="button" data-v="ssh">SSH</button><button type="button" data-v="serial">${t('f.serial')}</button></div>
         <label>${t('common.name')}</label><input name="name" value="${esc(s.name)}" placeholder="${t('f.namePh')}"/>
@@ -1536,6 +1701,7 @@ EventsOn('app:closeAsk', async () => {
 (async () => {
     hydrateIcons();
     await loadPrefs();
+    state.collapsed = new Set(prefs.collapsed);
     applyLanguage();
     applyLayout();
     applyTheme();
