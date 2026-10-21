@@ -9,7 +9,7 @@ export type Release = { version: string; downloadUrl: string; sizeMB: string; pu
 
 const fallback: Release = {
   version: "",
-  downloadUrl: `${LATEST_URL}/download/Hopline.exe`,
+  downloadUrl: LATEST_URL,
   sizeMB: "16 MB",
   publishedAt: "",
 };
@@ -24,7 +24,8 @@ export async function getLatestRelease(): Promise<Release> {
     });
     if (!res.ok) return fallback;
     const rel = await res.json();
-    const exe = (rel.assets ?? []).find((a: { name: string }) => a.name === "Hopline.exe");
+    // Assets are named Hopline-<version>.exe (older releases: Hopline.exe).
+    const exe = (rel.assets ?? []).find((a: { name: string }) => /^Hopline(-[\w.]+)?\.exe$/i.test(a.name));
     return {
       version: rel.tag_name ?? "",
       downloadUrl: exe?.browser_download_url ?? fallback.downloadUrl,

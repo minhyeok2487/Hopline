@@ -20,13 +20,13 @@
 
 ## 설치
 
-1. [최신 릴리스](https://github.com/minhyeok2487/Hopline/releases/latest)에서 `Hopline.exe`를 받습니다.
+1. [최신 릴리스](https://github.com/minhyeok2487/Hopline/releases/latest)에서 `Hopline-<버전>.exe`(예: `Hopline-0.6.0.exe`)를 받습니다. 이름을 `Hopline.exe`로 바꿔도 되고, 설정은 파일 이름과 상관없이 유지됩니다.
 2. 원하는 폴더(예: `C:\Tools\Hopline\`)에 두고 실행합니다. 설치 과정은 없습니다.
 3. 아직 코드 서명이 없어서 처음 실행할 때 Windows SmartScreen이 *"Windows의 PC 보호"* 경고를 띄울 수 있습니다. **추가 정보 → 실행**을 누르세요. 실행 전에 릴리스 페이지의 SHA-256 값과 파일을 비교해 볼 수 있습니다.
 
 Hopline은 Microsoft Edge WebView2 런타임이 필요합니다. Windows 11과 최신 Windows 10에는 기본으로 들어 있습니다. 앱이 켜지지 않으면 [WebView2 Evergreen 런타임](https://developer.microsoft.com/microsoft-edge/webview2/)을 설치하세요.
 
-삭제할 때는 `Hopline.exe`를 지우면 됩니다. 저장된 데이터까지 지우려면 [데이터 위치](../README.ko.md#데이터-위치)에 있는 폴더도 지우세요.
+삭제할 때는 Hopline 실행 파일을 지우면 됩니다. 저장된 데이터까지 지우려면 [데이터 위치](../README.ko.md#데이터-위치)에 있는 폴더도 지우세요.
 
 ## 처음 접속하기
 
@@ -229,7 +229,7 @@ Hopline은 로컬 MCP 서버를 띄워 Claude Code 같은 AI 어시스턴트가 
 
 창을 닫아도 Hopline은 종료되지 않고 알림 영역(트레이)으로 숨겨집니다. MCP 서버와 열린 연결이 그대로 유지되므로 창을 닫은 상태에서도 AI가 계속 작업할 수 있습니다.
 
-- 트레이 아이콘을 클릭하거나 `Hopline.exe`를 다시 실행하면 탭이 그대로 있는 창이 돌아옵니다. Hopline은 한 번에 하나만 실행됩니다.
+- 트레이 아이콘을 클릭하거나 Hopline 실행 파일을 다시 실행하면 탭이 그대로 있는 창이 돌아옵니다. Hopline은 한 번에 하나만 실행됩니다.
 - 완전히 끄려면 트레이 아이콘을 우클릭해 **종료**를 누르세요.
 - 창이 숨겨진 상태에서 AI가 비밀번호가 저장되지 않은 세션을 열면 창이 다시 나와 비밀번호를 묻습니다.
 - Windows 11에서는 새 트레이 아이콘이 숨김 아이콘(**^**) 안에 들어갑니다. 작업 표시줄로 끌어다 놓으면 항상 보입니다.

@@ -81,7 +81,7 @@ Saved passwords never pass through MCP. If a session has no saved password, Hopl
 
 ## Download
 
-Grab `Hopline.exe` from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest) and run it; there is no installer. It runs on Windows 10/11 with the WebView2 runtime (built into Windows 11).
+Grab `Hopline-<version>.exe` (for example `Hopline-0.6.0.exe`) from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest) and run it; there is no installer. It runs on Windows 10/11 with the WebView2 runtime (built into Windows 11).
 
 The executable is not code-signed yet, so SmartScreen may warn on first launch: choose **More info → Run anyway**. The release notes list the SHA-256 so you can verify the download.
 

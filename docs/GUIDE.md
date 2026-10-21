@@ -20,13 +20,13 @@ This guide walks through everyday use of Hopline: installing it, saving sessions
 
 ## Install
 
-1. Download `Hopline.exe` from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest).
+1. Download `Hopline-<version>.exe` (for example `Hopline-0.6.0.exe`) from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest). You can rename it to `Hopline.exe`; settings don't depend on the file name.
 2. Put it anywhere (for example `C:\Tools\Hopline\`) and run it. There is no installer.
 3. The executable is not code-signed yet, so Windows SmartScreen may say *"Windows protected your PC"*. Click **More info → Run anyway**. You can compare the file's SHA-256 with the value on the release page first.
 
 Hopline needs the Microsoft Edge WebView2 runtime. It is built into Windows 11 and most up-to-date Windows 10 installs; if the app does not start, install the [WebView2 Evergreen runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
 
-To uninstall, delete `Hopline.exe` and, if you want to remove your data too, the folders listed in [Where data is stored](../README.md#where-data-is-stored).
+To uninstall, delete the Hopline executable and, if you want to remove your data too, the folders listed in [Where data is stored](../README.md#where-data-is-stored).
 
 ## Connect for the first time
 
@@ -229,7 +229,7 @@ Hopline can run a local MCP server so an AI assistant such as Claude Code can op
 
 Closing the window does not quit Hopline: it hides to the notification area (system tray), and the MCP server and open connections keep running, so an assistant can keep working with the window closed.
 
-- Click the tray icon, or run `Hopline.exe` again, to bring the window back with its tabs. Only one Hopline runs at a time.
+- Click the tray icon, or run the Hopline executable again, to bring the window back with its tabs. Only one Hopline runs at a time.
 - Right-click the tray icon and choose **Quit** to exit for real.
 - If an assistant opens a session with no saved password while the window is hidden, the window comes back and asks you.
 - On Windows 11 a new tray icon starts in the hidden icons (**^**); drag it onto the taskbar to keep it visible.
