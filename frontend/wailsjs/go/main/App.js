@@ -258,6 +258,10 @@ export function StopTFTP() {
   return window['go']['main']['App']['StopTFTP']();
 }
 
+export function TrustHostKey(arg1) {
+  return window['go']['main']['App']['TrustHostKey'](arg1);
+}
+
 export function WasUpdated() {
   return window['go']['main']['App']['WasUpdated']();
 }

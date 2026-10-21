@@ -130,6 +130,8 @@ export function StartTFTP(arg1:string,arg2:number,arg3:boolean):Promise<main.TFT
 
 export function StopTFTP():Promise<void>;
 
+export function TrustHostKey(arg1:string):Promise<void>;
+
 export function WasUpdated():Promise<boolean>;
 
 export function Write(arg1:string,arg2:string):Promise<void>;
