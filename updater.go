@@ -24,7 +24,7 @@ import (
 
 // appVersion is bumped with every release (and can be overridden with
 // -ldflags "-X main.appVersion=..." for testing the updater).
-var appVersion = "0.7.0"
+var appVersion = "0.8.0"
 
 const releasesAPI = "https://api.github.com/repos/minhyeok2487/Hopline/releases/latest"
 
