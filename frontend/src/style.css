@@ -357,6 +357,8 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .modal .chk { display: flex; align-items: center; gap: 7px; color: var(--fg) !important; }
 .modal .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .claude-btns { flex-wrap: wrap; }
+.hk-fp { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg3); }
+.hk-fp code { font: 12px var(--mono); word-break: break-all; user-select: text; }
 .tftp-ips { display: flex; flex-wrap: wrap; gap: 6px; }
 .tftp-ips code { font: 12px var(--mono); padding: 2px 8px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--line); user-select: text; }
 .tftp-ex { white-space: pre; }

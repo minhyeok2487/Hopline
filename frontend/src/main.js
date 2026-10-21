@@ -210,12 +210,12 @@ addEventListener('keydown', (e) => {
 }, true);
 
 /** modal(title, html, opts) — onOk(root) returns false to keep it open. Resolves to onOk's result or null. */
-function modal(title, bodyHtml, {okText = t('common.ok'), onOk, onMount, onCancel, wide = false, danger = false} = {}) {
+function modal(title, bodyHtml, {okText = t('common.ok'), cancelText = t('common.cancel'), onOk, onMount, onCancel, wide = false, danger = false, focusCancel = false} = {}) {
     return new Promise((resolve) => {
         const bg = document.createElement('div');
         bg.className = 'modal-bg';
         bg.innerHTML = `<div class="modal${wide ? ' wide' : ''}" role="dialog" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${bodyHtml}
-            <div class="btns"><button data-x="cancel">${t('common.cancel')}</button><button class="primary${danger ? ' danger-btn' : ''}" data-x="ok">${esc(okText)}</button></div></div>`;
+            <div class="btns"><button data-x="cancel">${esc(cancelText)}</button><button class="primary${danger ? ' danger-btn' : ''}" data-x="ok">${esc(okText)}</button></div></div>`;
         if (danger) bg.querySelector('[data-x=ok]').style.cssText = 'background:var(--bad);border-color:var(--bad)';
         $('#modal-root').appendChild(bg);
         const root = bg.firstElementChild;
@@ -237,7 +237,8 @@ function modal(title, bodyHtml, {okText = t('common.ok'), onOk, onMount, onCance
         onMount?.(root);
         // Focus again on the next tick: a terminal that triggered the modal can reclaim focus.
         // A plain confirmation has no field: focus OK so Enter/Esc work and keys don't reach the terminal.
-        const first = root.querySelector('[autofocus]') || root.querySelector('input,select,textarea') || root.querySelector('[data-x=ok]');
+        const first = (focusCancel && root.querySelector('[data-x=cancel]'))
+            || root.querySelector('[autofocus]') || root.querySelector('input,select,textarea') || root.querySelector('[data-x=ok]');
         first?.focus();
         setTimeout(() => first?.focus(), 0);
     });
@@ -957,10 +958,34 @@ async function connectTab(tab, password = '') {
             return markClosed(tab, t('conn.pwCanceled'));
         }
         if (msg.includes('CANCELED')) return markClosed(tab, t('conn.canceled'));
+        const hk = msg.match(/HOSTKEY_CHANGED (\{.*\})/);
+        if (hk) return hostKeyChanged(tab, JSON.parse(hk[1]), password);
         term.write(`\x1b[31m${t('conn.failed')}: ${msg.replace(/\n/g, '\r\n')}\x1b[0m\r\n`);
         reportMcp(tab, msg);
         markClosed(tab, t('conn.failed') + ' · ' + msg.split('\n')[0]);
     }
+}
+
+// The device presented a different SSH host key than the one saved on first
+// connect. Show both fingerprints and let the user decide; Cancel is the default.
+async function hostKeyChanged(tab, info, password) {
+    tab.term.write(`\x1b[33m${t('hk.term', {host: info.host})}\x1b[0m\r\n`);
+    App.ShowWindow(); // the window may be hidden in the tray
+    const trust = await modal(t('hk.title'), `<p>${t('hk.body', {host: esc(info.host)})}</p>
+        <div class="hk-fp"><span class="hint">${t('hk.old')}</span><code>${(info.old || []).map(esc).join('<br>') || '-'}</code>
+        <span class="hint">${t('hk.new')}</span><code>${esc(info.new)} <span class="hint">(${esc(info.type)})</span></code></div>
+        <p class="hint">${t('hk.hint')}</p>`, {
+        okText: t('hk.trust'), cancelText: t('hk.dont'), danger: true, focusCancel: true,
+    });
+    if (!trust) return markClosed(tab, t('hk.refused'));
+    try {
+        await App.TrustHostKey(info.host);
+        tab.term.write(`\x1b[33m${t('hk.saved', {fp: info.new})}\x1b[0m\r\n`);
+    } catch (e) {
+        toast(String(e), 'err');
+        return markClosed(tab, String(e));
+    }
+    return connectTab(tab, password);
 }
 
 // Tell the backend how a tab opened by MCP open_session ended up.

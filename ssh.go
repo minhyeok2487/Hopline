@@ -204,7 +204,7 @@ func tofuHostKeys(path string, out io.Writer) ssh.HostKeyCallback {
 			return err
 		}
 		if len(ke.Want) > 0 {
-			return fmt.Errorf(T("ssh.hostKeyChanged"), ssh.FingerprintSHA256(key), path)
+			return hostKeyChangedError(host, key, ke, path)
 		}
 		f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil {

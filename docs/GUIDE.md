@@ -76,15 +76,12 @@ Tips:
 
 **Private keys with a passphrase:** Hopline asks for the passphrase in the password prompt when it connects.
 
-**Host keys (trust on first use):** the first time you connect to a host, its key is saved to `%APPDATA%\Hopline\known_hosts` and the fingerprint is printed in yellow in the terminal. If the key later changes, Hopline refuses to connect and shows:
+**Host keys (trust on first use):** the first time you connect to a host, its key is saved to `%APPDATA%\Hopline\known_hosts` and the fingerprint is printed in yellow in the terminal.
 
-```
-The host key has changed! (SHA256:...)
-This could be a man-in-the-middle attack. If the device was reinstalled, remove its line from:
-C:\Users\<you>\AppData\Roaming\Hopline\known_hosts
-```
+If a host later presents a different key, Hopline stops and shows **The SSH host key has changed** with the saved and the new fingerprint:
 
-If you know why the key changed (the device was replaced or reinstalled), open that file, delete the line that starts with the host name or `[host]:port`, and connect again.
+- **Don't connect** (the default, also on Enter): nothing changes. Choose this if you don't know why the key changed; someone may be intercepting the connection.
+- **Trust new key and connect**: for a device you reinstalled or replaced (lab VMs, RMA swaps, a gateway rebuilt with Gaia). Hopline replaces only that host's old line in known_hosts and connects.
 
 ## Working in the terminal
 
@@ -260,7 +257,7 @@ Closing the window does not quit Hopline: it hides to the notification area (sys
 |---|---|
 | *"Windows protected your PC"* on first run | The executable is not code-signed. Click **More info → Run anyway**, after checking the SHA-256 on the release page if you like. |
 | The window stays blank or the app does not start | Install the WebView2 Evergreen runtime. |
-| *The host key has changed!* | See [Authentication and host keys](#authentication-and-host-keys). |
+| *The SSH host key has changed* | See [Authentication and host keys](#authentication-and-host-keys): trust the new key only if the device was reinstalled or replaced. |
 | Old switch or firewall: *no common algorithm* / handshake failed | Edit the session and turn on **Allow legacy algorithms**. |
 | *Authentication failed* | Hopline asks for the password again. Check the user name; for key auth, check the key path and that the key is in OpenSSH/PEM format. |
 | SFTP panel: *SFTP unavailable* | The server does not offer the SFTP subsystem. Use the terminal or a host that supports SFTP. |
