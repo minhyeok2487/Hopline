@@ -75,6 +75,38 @@ export namespace main {
 		}
 	}
 	
+	export class ImportResult {
+	    added: number;
+	    skipped: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.added = source["added"];
+	        this.skipped = source["skipped"];
+	    }
+	}
+	export class ImportSource {
+	    id: string;
+	    name: string;
+	    path: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportSource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.count = source["count"];
+	    }
+	}
 	export class LogonStep {
 	    id: string;
 	    expect: string;

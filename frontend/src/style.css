@@ -349,6 +349,10 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .modal .chk { display: flex; align-items: center; gap: 7px; color: var(--fg) !important; }
 .modal .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .claude-btns { flex-wrap: wrap; }
+.imp-list { display: grid; gap: 8px; margin: 12px 0; }
+.imp-row { display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg3); }
+.imp-path { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.imp-file { display: flex; }
 .upd-links { display: flex; gap: 6px; margin-top: 4px; }
 .upd-progress { margin-top: 14px; display: grid; gap: 6px; }
 .upd-progress .bar { height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; }

@@ -78,6 +78,14 @@ export function HideWindow(arg1) {
   return window['go']['main']['App']['HideWindow'](arg1);
 }
 
+export function ImportFile() {
+  return window['go']['main']['App']['ImportFile']();
+}
+
+export function ImportFrom(arg1) {
+  return window['go']['main']['App']['ImportFrom'](arg1);
+}
+
 export function ListFolders() {
   return window['go']['main']['App']['ListFolders']();
 }
@@ -140,6 +148,10 @@ export function SaveSession(arg1, arg2, arg3) {
 
 export function SaveUIPrefs(arg1) {
   return window['go']['main']['App']['SaveUIPrefs'](arg1);
+}
+
+export function ScanImports() {
+  return window['go']['main']['App']['ScanImports']();
 }
 
 export function SetActiveTab(arg1) {

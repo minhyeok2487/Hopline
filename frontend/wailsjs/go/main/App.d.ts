@@ -40,6 +40,10 @@ export function GetVersion():Promise<string>;
 
 export function HideWindow(arg1:boolean):Promise<void>;
 
+export function ImportFile():Promise<main.ImportResult>;
+
+export function ImportFrom(arg1:string):Promise<main.ImportResult>;
+
 export function ListFolders():Promise<Array<string>>;
 
 export function ListMacros():Promise<Array<main.Macro>>;
@@ -71,6 +75,8 @@ export function SaveMacro(arg1:main.Macro):Promise<main.Macro>;
 export function SaveSession(arg1:main.Session,arg2:string,arg3:boolean):Promise<main.Session>;
 
 export function SaveUIPrefs(arg1:string):Promise<void>;
+
+export function ScanImports():Promise<Array<main.ImportSource>>;
 
 export function SetActiveTab(arg1:string):Promise<void>;
 

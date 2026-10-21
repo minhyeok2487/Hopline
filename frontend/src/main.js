@@ -296,8 +296,10 @@ function renderSessions() {
     const tree = $('#sess-tree');
     const list = state.sessions.filter((s) => !q || [s.name, s.host, s.user, s.folder, s.comPort].join(' ').toLowerCase().includes(q));
     if (!state.sessions.length && !state.folders.length) {
-        tree.innerHTML = `<div class="empty">${icon('terminal')}<span>${t('sess.none')}</span><button id="empty-add" class="primary">${icon('plus')}${t('sess.create')}</button></div>`;
+        tree.innerHTML = `<div class="empty">${icon('terminal')}<span>${t('sess.none')}</span><button id="empty-add" class="primary">${icon('plus')}${t('sess.create')}</button>
+            <button id="empty-import">${icon('import')}${t('imp.title')}</button></div>`;
         $('#empty-add').addEventListener('click', () => editSession(null));
+        $('#empty-import').addEventListener('click', () => importDialog());
         return;
     }
     if (q && !list.length) {
@@ -345,6 +347,42 @@ $('#sess-filter').addEventListener('keydown', (e) => {
 });
 $('#sess-add').onclick = () => editSession(null);
 $('#folder-add').onclick = () => newFolder('');
+$('#sess-import').onclick = () => importDialog();
+
+// Import sessions from other terminals found on this PC, or from a file.
+async function importDialog() {
+    const sources = await App.ScanImports() || [];
+    const report = (name, r) => {
+        toast(t('imp.done', {name, n: r.added}) + (r.skipped ? ' ' + t('imp.skipped', {n: r.skipped}) : ''), 'ok');
+        loadSessions();
+    };
+    const rows = sources.map((s) => `<div class="imp-row"><b>${esc(s.name)}</b><span class="hint">${esc(t('imp.count', {n: s.count}))}</span>
+        <span class="imp-path mono" title="${esc(s.path)}">${esc(s.path)}</span><button type="button" class="primary" data-id="${esc(s.id)}">${t('imp.go')}</button></div>`).join('');
+    await modal(t('imp.title'), `<p class="hint">${t('imp.hint')}</p>
+        <div class="imp-list">${rows || `<p class="hint">${t('imp.none')}</p>`}</div>
+        <div class="inline imp-file"><button type="button" data-x="file">${icon('folder')}${t('imp.file')}</button></div>`, {
+        okText: t('common.close'),
+        wide: true,
+        onMount: (r) => {
+            r.querySelector('[data-x=cancel]').classList.add('hidden');
+            r.querySelectorAll('.imp-row button').forEach((b) => {
+                b.onclick = async () => {
+                    b.disabled = true;
+                    try {
+                        report(sources.find((s) => s.id === b.dataset.id).name, await App.ImportFrom(b.dataset.id));
+                        b.textContent = t('imp.doneShort');
+                    } catch (e) { toast(String(e), 'err'); b.disabled = false; }
+                };
+            });
+            r.querySelector('[data-x=file]').onclick = async () => {
+                try {
+                    const res = await App.ImportFile();
+                    if (res && (res.added || res.skipped)) report(t('imp.fromFile'), res);
+                } catch (e) { toast(String(e), 'err'); }
+            };
+        },
+    });
+}
 
 function toggleFolder(path, open) {
     if (open ?? state.collapsed.has(path)) state.collapsed.delete(path);
@@ -460,6 +498,7 @@ $('#sess-tree').addEventListener('contextmenu', (e) => {
         return ctxMenu(e.clientX, e.clientY, [
             {label: t('sess.new'), icon: 'plus', fn: () => editSession(null)},
             {label: t('sess.newFolder'), icon: 'folderPlus', fn: () => newFolder('')},
+            {label: t('imp.title') + '…', icon: 'import', fn: () => importDialog()},
         ]);
     }
     const s = state.sessions.find((x) => x.id === it.dataset.id);
@@ -717,8 +756,9 @@ function readLogonSteps(r, keepEmpty = false) {
 // ---------------------------------------------------------------- recents (empty state)
 
 function pushRecent(tab) {
-    const key = tab.adhoc ? {adhoc: {host: tab.session.host, user: tab.session.user, port: tab.session.port}} : {id: tab.session.id};
-    const same = (r) => (key.id ? r.id === key.id : r.adhoc && r.adhoc.host === key.adhoc.host && r.adhoc.user === key.adhoc.user && r.adhoc.port === key.adhoc.port);
+    const key = tab.adhoc ? {adhoc: {kind: tab.session.kind, host: tab.session.host, user: tab.session.user, port: tab.session.port}} : {id: tab.session.id};
+    const same = (r) => (key.id ? r.id === key.id : r.adhoc && (r.adhoc.kind || 'ssh') === key.adhoc.kind
+        && r.adhoc.host === key.adhoc.host && r.adhoc.user === key.adhoc.user && r.adhoc.port === key.adhoc.port);
     prefs.recents = [{...key, t: Date.now()}, ...prefs.recents.filter((r) => !same(r))].slice(0, 8);
     savePrefs();
     renderRecents();
@@ -731,7 +771,9 @@ function renderRecents() {
             return s && {s, adhoc: false, t: r.t};
         }
         const a = r.adhoc;
-        return {s: {id: '', kind: 'ssh', name: `${a.user}@${a.host}`, ...a}, adhoc: true, t: r.t};
+        const kind = a.kind || 'ssh';
+        const name = kind === 'telnet' ? `telnet ${a.host}` : `${a.user}@${a.host}`;
+        return {s: {id: '', name, ...a, kind}, adhoc: true, t: r.t};
     }).filter(Boolean).slice(0, 6);
     $('#recents').innerHTML = items.length
         ? `<div class="rec-title">${t('recent.title')}</div>` + items.map((x, i) => `<button class="recent" data-i="${i}">
