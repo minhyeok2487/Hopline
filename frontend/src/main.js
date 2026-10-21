@@ -824,6 +824,7 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
             <button data-x="close" data-i18n="conn.closeTab"></button></div>`;
     applyStatic(pane);
     $('#terms').appendChild(pane);
+    pane.addEventListener('mousedown', () => { if (state.active?.pane !== pane) { const tb = state.tabs.find((x) => x.pane === pane); if (tb) activate(tb); } }, true);
 
     const term = new Terminal({...termOptions(), allowProposedApi: true});
     const fit = new FitAddon();
@@ -997,21 +998,94 @@ async function closeTab(tab, force = false) {
     tab.pane.remove();
     const i = state.tabs.indexOf(tab);
     state.tabs.splice(i, 1);
+    split.slots = split.slots.map((id) => (id === tab.id ? null : id));
     if (state.active === tab) {
         state.active = null;
         const next = state.tabs[Math.min(i, state.tabs.length - 1)];
-        if (next) activate(next);
-        else App.SetActiveTab('').catch(() => {});
+        // In split view, focus another visible tab before pulling a hidden one in.
+        const shown = state.tabs.find((x) => split.slots.includes(x.id));
+        if (split.mode !== 'single' && shown) activate(shown);
+        else if (next) activate(next);
+        else { App.SetActiveTab('').catch(() => {}); layoutPanes(); }
     }
     renderTabs();
     renderSessions();
     if (state.sftp.connId === tab.id) { state.sftp.connId = null; renderSftp(); }
 }
 
+// ---- split view: up to four tabs visible at once; the active tab is the focused pane.
+
+const SPLITS = {
+    single: [[0, 0, 1, 1]],
+    v2: [[0, 0, 0.5, 1], [0.5, 0, 0.5, 1]],
+    h2: [[0, 0, 1, 0.5], [0, 0.5, 1, 0.5]],
+    q4: [[0, 0, 0.5, 0.5], [0.5, 0, 0.5, 0.5], [0, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5]],
+};
+const split = {mode: 'single', slots: [null], focus: 0};
+
+function setSplit(mode, extra = null) {
+    const n = SPLITS[mode].length;
+    // Keep the active tab and whatever was already shown, then fill with other open tabs.
+    const keep = [state.active?.id, extra?.id, ...split.slots].filter((id, i, a) => id && a.indexOf(id) === i && state.tabs.some((t) => t.id === id));
+    for (const t of state.tabs) if (keep.length < n && !keep.includes(t.id)) keep.push(t.id);
+    split.mode = mode;
+    split.slots = Array.from({length: n}, (_, i) => keep[i] ?? null);
+    split.focus = Math.max(0, split.slots.indexOf(state.active?.id));
+    if (extra) { split.focus = split.slots.indexOf(extra.id); }
+    const focusTab = state.tabs.find((t) => t.id === split.slots[split.focus]);
+    if (focusTab) activate(focusTab); else layoutPanes();
+}
+
+function layoutPanes() {
+    const terms = $('#terms');
+    const rects = SPLITS[split.mode];
+    terms.classList.toggle('split', split.mode !== 'single');
+    terms.querySelectorAll('.slot-empty').forEach((el) => el.remove());
+    const place = (el, [x, y, w, h]) => {
+        Object.assign(el.style, {left: `calc(${x * 100}% + ${x ? 1 : 0}px)`, top: `calc(${y * 100}% + ${y ? 1 : 0}px)`,
+            width: `calc(${w * 100}% - ${w < 1 ? 1 : 0}px)`, height: `calc(${h * 100}% - ${h < 1 ? 1 : 0}px)`});
+    };
+    if (split.mode === 'single') {
+        for (const t of state.tabs) {
+            t.pane.classList.toggle('on', t === state.active);
+            t.pane.classList.remove('focus');
+            t.pane.removeAttribute('style');
+        }
+    } else {
+        if (state.active && !split.slots.includes(state.active.id)) split.slots[split.focus] = state.active.id;
+        if (state.active) split.focus = split.slots.indexOf(state.active.id);
+        for (const t of state.tabs) {
+            const i = split.slots.indexOf(t.id);
+            t.pane.classList.toggle('on', i >= 0);
+            t.pane.classList.toggle('focus', i >= 0 && i === split.focus);
+            if (i >= 0) place(t.pane, rects[i]); else t.pane.removeAttribute('style');
+        }
+        split.slots.forEach((id, i) => {
+            if (id && state.tabs.some((t) => t.id === id)) return;
+            const el = document.createElement('div');
+            el.className = 'slot-empty' + (i === split.focus ? ' focus' : '');
+            el.textContent = t('split.pick');
+            el.onclick = () => { split.focus = i; layoutPanes(); };
+            place(el, rects[i]);
+            terms.appendChild(el);
+        });
+    }
+    $('#btn-split').classList.toggle('on', split.mode !== 'single');
+    requestAnimationFrame(() => state.tabs.forEach((t) => t.pane.classList.contains('on') && t.fit.fit()));
+}
+
+$('#btn-split').onclick = (e) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const opt = (mode, label) => ({label: (split.mode === mode ? '✓ ' : '') + label, fn: () => setSplit(mode)});
+    ctxMenu(r.left, r.bottom + 4, [opt('single', t('split.single')), opt('v2', t('split.v2')), opt('h2', t('split.h2')), opt('q4', t('split.q4'))]);
+};
+
 function activate(tab) {
     state.active = tab;
     App.SetActiveTab(tab.id).catch(() => {});
-    for (const t of state.tabs) t.pane.classList.toggle('on', t === tab);
+    if (split.mode !== 'single' && !split.slots.includes(tab.id)) split.slots[split.focus] = tab.id;
+    layoutPanes();
     syncActiveTab();
     requestAnimationFrame(() => {
         tab.fit.fit();
@@ -1089,6 +1163,7 @@ $('#tabbar').addEventListener('contextmenu', (e) => {
         {label: t('conn.reconnect'), icon: 'refresh', fn: () => { if (tab.status === 'open') App.Disconnect(tab.id); setTimeout(() => connectTab(tab), 200); }},
         {label: t('common.duplicate'), icon: 'plus', fn: () => openSession(tab.session, tab.adhoc)},
         {label: t('common.rename'), fn: () => renameTab(tab)},
+        ...(state.active && state.active !== tab ? [{label: t('split.with'), icon: 'split', fn: () => setSplit(split.mode === 'single' ? 'v2' : split.mode, tab)}] : []),
         {label: t('common.find'), icon: 'search', fn: () => { activate(tab); openFind(tab); }},
         {label: t('common.clear'), fn: () => tab.term.clear()},
         '-',
@@ -1159,7 +1234,7 @@ $('#tabbar').addEventListener('drop', (e) => {
 });
 $('#tabbar').addEventListener('dragend', () => { dragId = null; renderTabs(); });
 
-new ResizeObserver(() => state.active?.fit.fit()).observe($('#terms'));
+new ResizeObserver(() => state.tabs.forEach((t) => t.pane.classList.contains('on') && t.fit.fit())).observe($('#terms'));
 
 $('#btn-multi').onclick = () => {
     state.multi = !state.multi;
