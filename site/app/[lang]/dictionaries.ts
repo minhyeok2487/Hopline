@@ -18,7 +18,7 @@ const en = {
   strip: ["Single 16 MB .exe", "SSH · SFTP · Serial", "Built-in MCP server", "MIT license"],
   features: {
     title: "Everything you use every day, nothing you don't",
-    lead: "Built for network engineers who wanted MobaXterm's daily tools without the weight.",
+    lead: "Just what network engineers need for daily SSH and serial work, kept light.",
     items: [
       { icon: "terminal", title: "SSH tabs and saved sessions", body: "Nested folders, drag and drop, search, quick connect and recent connections. Passwords are encrypted with your Windows account." },
       { icon: "folder", title: "SFTP panel", body: "Browse the active SSH tab's files over the same connection. Drag files or folders in from Explorer to upload." },
@@ -103,7 +103,7 @@ const ko: Dict = {
   strip: ["16MB 실행 파일 하나", "SSH · SFTP · 시리얼", "MCP 서버 내장", "MIT 라이선스"],
   features: {
     title: "매일 쓰는 기능만, 가볍게",
-    lead: "MobaXterm의 일상 기능은 그대로 쓰고 싶지만 무게는 덜고 싶은 네트워크 엔지니어를 위해 만들었습니다.",
+    lead: "네트워크 엔지니어가 매일 하는 SSH·시리얼 작업에 필요한 것만 담아 가볍게 만들었습니다.",
     items: [
       { icon: "terminal", title: "SSH 탭과 세션 관리", body: "폴더 안의 폴더, 끌어서 정리, 검색, 빠른 접속, 최근 접속. 비밀번호는 Windows 계정으로 암호화해 저장합니다." },
       { icon: "folder", title: "SFTP 패널", body: "지금 보고 있는 SSH 탭의 파일을 같은 연결로 탐색합니다. 탐색기에서 파일이나 폴더를 끌어다 놓으면 업로드됩니다." },
