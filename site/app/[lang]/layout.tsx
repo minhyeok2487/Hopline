@@ -9,7 +9,7 @@ const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 // Korean glyphs load on demand (split by unicode range), so no preload.
 const kr = Noto_Sans_KR({ variable: "--font-kr", weight: ["400", "500", "700", "800"], preload: false });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://hopline.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://hopline-app.vercel.app";
 
 export async function generateStaticParams() {
   return locales.map((lang) => ({ lang }));

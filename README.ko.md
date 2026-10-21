@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/minhyeok2487/Hopline/releases/latest"><b>다운로드</b></a> ·
+  <a href="https://hopline-app.vercel.app/ko">웹사이트</a> ·
   <a href="docs/GUIDE.ko.md">사용 가이드</a> ·
   <a href="README.md">English</a> · 한국어
 </p>

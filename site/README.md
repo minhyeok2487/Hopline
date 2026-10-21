@@ -17,5 +17,5 @@ npm run dev
 
 1. In Vercel, **Add New → Project** and import the `Hopline` repository.
 2. Set **Root Directory** to `site`. The framework preset is detected as Next.js.
-3. Optional: add the environment variable `NEXT_PUBLIC_SITE_URL` with the final address (for example `https://hopline.vercel.app` or your own domain). It is used for canonical links, the sitemap and social preview images.
+3. Optional: add the environment variable `NEXT_PUBLIC_SITE_URL` with the final address (for example `https://hopline-app.vercel.app` or your own domain). It is used for canonical links, the sitemap and social preview images.
 4. Deploy. Later pushes to `main` redeploy automatically.
