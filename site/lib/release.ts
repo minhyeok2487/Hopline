@@ -14,10 +14,10 @@ const fallback: Release = {
   publishedAt: "",
 };
 
-/** Latest GitHub release, refreshed every few hours; falls back to the "latest" links. */
+/** Latest GitHub release (refreshed every 10 minutes); falls back to the "latest" links. */
 export async function getLatestRelease(): Promise<Release> {
   "use cache";
-  cacheLife("hours");
+  cacheLife({ stale: 300, revalidate: 600, expire: 86400 }); // new releases show up within ~10 minutes
   try {
     const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
       headers: { Accept: "application/vnd.github+json", "User-Agent": "hopline-site" },
