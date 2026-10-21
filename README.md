@@ -41,6 +41,7 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 - Multi-exec: type once into every checked tab
 - Macros: named command lists sent line by line with a configurable delay
 - Logon actions: expect/send steps run after connecting (enable, console login, jump hosts), with hidden values encrypted
+- Built-in updates: notices new releases, verifies the download and restarts into the new version
 - Keeps running in the tray when the window is closed, so the MCP server and connections stay up; optional start with Windows
 - Keyword highlighting for device output (down/error, up, warnings, IP/MAC, interface names) with editable rules
 - Per-tab session logs saved as plain text (escape codes stripped)

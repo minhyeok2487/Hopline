@@ -55,6 +55,10 @@ type App struct {
 
 	tray     trayState
 	quitting atomic.Bool
+
+	updMu       sync.Mutex
+	update      UpdateInfo
+	justUpdated bool
 }
 
 func NewApp() *App {
@@ -70,6 +74,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.startTray()
 	go updateSkill()
+	go a.watchUpdates()
 }
 
 func (a *App) shutdown(ctx context.Context) {

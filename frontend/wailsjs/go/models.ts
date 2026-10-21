@@ -217,6 +217,30 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class UpdateInfo {
+	    available: boolean;
+	    current: string;
+	    latest: string;
+	    page: string;
+	    size: number;
+	    notes: string;
+	    managed?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.current = source["current"];
+	        this.latest = source["latest"];
+	        this.page = source["page"];
+	        this.size = source["size"];
+	        this.notes = source["notes"];
+	        this.managed = source["managed"];
+	    }
+	}
 
 }
 

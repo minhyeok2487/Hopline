@@ -1522,7 +1522,7 @@ function schemePreview(name) {
 async function settingsDialog(before = null) {
     if ($('.modal-bg')) return;
     before = before ?? JSON.stringify(prefs); // kept across a language re-render so Cancel still reverts
-    const [closeToTray, autostart] = await Promise.all([App.GetCloseToTray(), App.GetAutostart()]).catch(() => [true, false]);
+    const [closeToTray, autostart, updateCheck, version] = await Promise.all([App.GetCloseToTray(), App.GetAutostart(), App.GetUpdateCheck(), App.GetVersion()]).catch(() => [true, false, true, '']);
     if ($('.modal-bg')) return;
     const seg = (key, opts) => `<div class="seg" data-pref="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(prefs[key]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     const chk = (key, label) => `<span></span><label class="chk"><input type="checkbox" data-pref="${key}" ${prefs[key] ? 'checked' : ''}/> ${label}</label>`;
@@ -1548,6 +1548,9 @@ async function settingsDialog(before = null) {
         <h4>${t('set.secWindow')}</h4>
         <span></span><label class="chk"><input type="checkbox" name="closeToTray" ${closeToTray ? 'checked' : ''}/> ${t('set.closeToTray')}</label>
         <span></span><label class="chk"><input type="checkbox" name="autostart" ${autostart ? 'checked' : ''}/> ${t('set.autostart')}</label>
+        <h4>${t('set.secUpdate')}</h4>
+        <label>${t('set.version')}</label><div class="inline"><span class="mono">v${esc(version)}</span><button type="button" data-x="upd-check">${t('set.checkNow')}</button></div>
+        <span></span><label class="chk"><input type="checkbox" name="updateCheck" ${updateCheck ? 'checked' : ''}/> ${t('set.updateCheck')}</label>
     </div>`;
     const ok = await modal(t('set.title'), body, {
         okText: t('common.save'),
@@ -1568,6 +1571,7 @@ async function settingsDialog(before = null) {
                 r.querySelector('#scheme-preview').innerHTML = schemePreview(prefs.termScheme);
             };
             r.querySelector('[data-x=hl-rules]').onclick = () => editHlRules();
+            r.querySelector('[data-x=upd-check]').onclick = () => checkUpdateNow();
             r.querySelectorAll('.seg[data-pref]').forEach((s) => s.querySelectorAll('button').forEach((b) => {
                 b.onclick = () => {
                     s.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
@@ -1586,9 +1590,11 @@ async function settingsDialog(before = null) {
         onOk: async (r) => {
             const tray = r.querySelector('[name=closeToTray]').checked;
             const auto = r.querySelector('[name=autostart]').checked;
+            const upd = r.querySelector('[name=updateCheck]').checked;
             try {
                 if (tray !== closeToTray) await App.SetCloseToTray(tray);
                 if (auto !== autostart) await App.SetAutostart(auto);
+                if (upd !== updateCheck) await App.SetUpdateCheck(upd);
             } catch (e) { toast(String(e), 'err'); return false; }
             return true;
         },
@@ -1757,6 +1763,76 @@ async function mcpDialog() {
 }
 $('#btn-mcp').onclick = mcpDialog;
 
+// ---------------------------------------------------------------- updates
+
+let updateOpen = false;
+async function updateDialog(info) {
+    if (updateOpen) return;
+    if ($('.modal-bg')) { // don't interrupt another dialog; ask once it closes
+        const wait = setInterval(() => { if (!$('.modal-bg')) { clearInterval(wait); updateDialog(info); } }, 1000);
+        return;
+    }
+    updateOpen = true;
+    const live = state.tabs.filter((x) => x.status === 'open').length;
+    let off;
+    await modal(t('upd.title'), `<p>${t('upd.body', {latest: esc(info.latest), current: esc(info.current)})}</p>
+        ${live ? `<p class="hint">${t('upd.tabs', {n: live})}</p>` : ''}
+        <div class="inline upd-links"><button type="button" data-x="notes">${t('upd.notes')}</button><button type="button" data-x="skip">${t('upd.skip')}</button></div>
+        <div class="upd-progress hidden"><div class="bar"><i></i></div><span class="hint" data-el="pct"></span></div>`, {
+        okText: t('upd.now'),
+        onMount: (r) => {
+            r.querySelector('[data-x=notes]').onclick = () => BrowserOpenURL(info.page);
+            r.querySelector('[data-x=skip]').onclick = async () => {
+                await App.SkipUpdate(info.latest);
+                r.querySelector('[data-x=cancel]').click();
+                toast(t('upd.skipped', {v: info.latest}));
+            };
+            off = EventsOn('update:progress', ({done, total}) => {
+                const pct = total ? Math.round((done / total) * 100) : 0;
+                r.querySelector('.upd-progress i').style.width = pct + '%';
+                r.querySelector('[data-el=pct]').textContent = `${fmtSize(done)}${total ? ' / ' + fmtSize(total) : ''} · ${pct}%`;
+            });
+        },
+        onOk: async (r) => {
+            r.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+            r.querySelector('.upd-progress').classList.remove('hidden');
+            r.querySelector('[data-el=pct]').textContent = t('upd.downloading');
+            try {
+                await App.ApplyUpdate(); // Hopline restarts on success
+                r.querySelector('[data-el=pct]').textContent = t('upd.restarting');
+                return false;
+            } catch (e) {
+                const msg = String(e);
+                r.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+                r.querySelector('.upd-progress').classList.add('hidden');
+                if (msg.includes('SCOOP')) {
+                    ClipboardSetText('scoop update hopline');
+                    toast(t('upd.scoop'), 'info');
+                    return true;
+                }
+                if (msg.includes('NOT_WRITABLE')) {
+                    BrowserOpenURL(info.page);
+                    toast(t('upd.manual'), 'err');
+                    return true;
+                }
+                toast(t('upd.failed', {e: msg}), 'err');
+                return false;
+            }
+        },
+    });
+    off?.();
+    updateOpen = false;
+}
+EventsOn('update:available', (info) => updateDialog(info));
+
+async function checkUpdateNow() {
+    try {
+        const info = await App.CheckUpdate();
+        if (info.available) updateDialog(info);
+        else toast(t('upd.latest', {v: info.current}), 'ok');
+    } catch (e) { toast(t('upd.checkFailed', {e: String(e)}), 'err'); }
+}
+
 // ---------------------------------------------------------------- close to tray
 
 EventsOn('app:closeAsk', async () => {
@@ -1782,5 +1858,6 @@ EventsOn('app:closeAsk', async () => {
     await Promise.all([loadSessions(), loadMacros(), refreshMcpButton()]);
     renderTabs();
     document.body.classList.remove('booting');
+    if (await App.WasUpdated().catch(() => false)) toast(t('upd.done', {v: await App.GetVersion()}), 'ok');
     setInterval(renderRecents, 60000); // keep "n min ago" fresh
 })();

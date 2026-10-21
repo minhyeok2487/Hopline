@@ -74,6 +74,9 @@ type Settings struct {
 
 	CloseToTray     *bool `json:"closeToTray,omitempty"` // nil = default (on)
 	TrayNoticeShown bool  `json:"trayNoticeShown,omitempty"`
+
+	UpdateCheck *bool  `json:"updateCheck,omitempty"` // nil = default (on)
+	SkipVersion string `json:"skipVersion,omitempty"`
 }
 
 type storeFile struct {

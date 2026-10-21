@@ -13,7 +13,9 @@ var assets embed.FS
 
 func main() {
 	// Create an instance of the app structure
+	justUpdated := updatedFrom()
 	app := NewApp()
+	app.justUpdated = justUpdated
 
 	// Create application with options
 	err := wails.Run(&options.App{

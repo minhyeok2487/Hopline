@@ -189,6 +189,7 @@ Open with the gear button or **Ctrl+,**. Changes preview immediately; **Cancel**
 | Right-click pastes | Off: right-click opens the menu instead |
 | Confirm multi-line paste, Confirm closing a connected tab | Safety prompts |
 | Closing the window hides it to the tray | On by default. See [Keep running in the tray](#keep-running-in-the-tray). |
+| Updates | Hopline checks GitHub for a new version on start and twice a day. **Update** downloads it, verifies its SHA-256, swaps it in and restarts Hopline (open connections close). **Skip this version** stops asking about that version; **Check now** asks right away. Scoop installs are told to run `scoop update hopline` instead. |
 | Start in the tray when Windows starts | Launches Hopline hidden at sign-in so the MCP server is always available |
 
 ## AI assistants (MCP)
