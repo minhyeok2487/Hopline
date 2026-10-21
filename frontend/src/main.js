@@ -11,6 +11,7 @@ import {
 import {icon, hydrateIcons} from './icons';
 import {SCHEMES, FONTS, resolveScheme, fontStack} from './themes';
 import {LANGS, t, setLang, resolveLang, applyStatic} from './i18n';
+import {Highlighter, DEFAULT_HL_RULES, HL_COLORS, compileRules, checkPattern} from './highlight';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -47,6 +48,8 @@ const DEFAULT_PREFS = {
     confirmMultiline: true,
     confirmClose: true,
     uiScale: 100,              // % zoom for the app chrome (terminal text uses fontSize)
+    highlight: true,           // keyword highlighting
+    hlRules: null,             // null = DEFAULT_HL_RULES
     sideWidth: 270,
     sideCollapsed: false,
     recents: [],               // [{id} | {adhoc:{host,user,port}}, t]
@@ -91,7 +94,15 @@ function applyTheme() {
         Object.assign(t.term.options, opts);
         t.fit.fit();
     }
+    refreshHighlight(); // colours follow the scheme
     renderStatus();
+}
+
+let hlCompiled = [];
+const hlRules = () => prefs.hlRules || DEFAULT_HL_RULES;
+function refreshHighlight() {
+    hlCompiled = prefs.highlight ? compileRules(hlRules()) : [];
+    for (const tab of state.tabs) tab.hl.reset();
 }
 
 function applyLanguage() {
@@ -763,6 +774,7 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
     const tab = {
         id, session: s, adhoc, title: s.name, kind: s.kind, term, fit, search, pane,
         status: 'connecting', logging: false, multi: true, mcpPending: viaMcp, bot: false,
+        hl: new Highlighter(term, () => hlCompiled, () => resolveScheme(prefs.termScheme, isDark())),
     };
     state.tabs.push(tab);
 
@@ -916,6 +928,7 @@ async function closeTab(tab, force = false) {
     App.Disconnect(tab.id);
     hideConnecting(tab);
     EventsOff('data:' + tab.id, 'closed:' + tab.id, 'logon:' + tab.id);
+    tab.hl.dispose();
     tab.term.dispose();
     tab.pane.remove();
     const i = state.tabs.indexOf(tab);
@@ -1525,6 +1538,7 @@ async function settingsDialog(before = null) {
         <label>${t('set.fontSize')}</label><div class="inline"><input type="range" min="9" max="28" step="1" data-pref="fontSize" value="${prefs.fontSize}"/><output class="mono">${prefs.fontSize}px</output></div>
         <label>${t('set.lineHeight')}</label><div class="inline"><input type="range" min="1" max="1.6" step="0.05" data-pref="lineHeight" value="${prefs.lineHeight}"/><output class="mono">${prefs.lineHeight}</output></div>
         <label>${t('set.cursor')}</label><div class="inline">${seg('cursorStyle', [['block', t('set.block')], ['bar', t('set.bar')], ['underline', t('set.underline')]])}<label class="chk"><input type="checkbox" data-pref="cursorBlink" ${prefs.cursorBlink ? 'checked' : ''}/> ${t('set.blink')}</label></div>
+        <label>${t('set.highlight')}</label><div class="inline"><label class="chk"><input type="checkbox" data-pref="highlight" ${prefs.highlight ? 'checked' : ''}/> ${t('set.highlightOn')}</label><button type="button" data-x="hl-rules">${t('hl.edit')}</button></div>
         <label>${t('set.scrollback')}</label><div class="inline"><input type="number" min="1000" max="200000" step="1000" data-pref="scrollback" value="${prefs.scrollback}"/><span class="hint">${t('set.lines')}</span></div>
         <h4>${t('set.secBehavior')}</h4>
         ${chk('copyOnSelect', t('set.copyOnSelect'))}
@@ -1553,6 +1567,7 @@ async function settingsDialog(before = null) {
                 applyTheme();
                 r.querySelector('#scheme-preview').innerHTML = schemePreview(prefs.termScheme);
             };
+            r.querySelector('[data-x=hl-rules]').onclick = () => editHlRules();
             r.querySelectorAll('.seg[data-pref]').forEach((s) => s.querySelectorAll('button').forEach((b) => {
                 b.onclick = () => {
                     s.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
@@ -1581,6 +1596,65 @@ async function settingsDialog(before = null) {
     if (ok) { savePrefs(); toast(t('set.saved'), 'ok'); }
 }
 $('#btn-settings').onclick = () => settingsDialog();
+
+// Keyword highlighting rules: name, regex, colour, ignore case. Applied on OK; the
+// settings dialog's Cancel still reverts them with everything else.
+async function editHlRules() {
+    const colorOpts = (c) => HL_COLORS.map((k) => `<option value="${k}" ${k === c ? 'selected' : ''}>${t('hl.c.' + k)}</option>`).join('');
+    const row = (r) => `<div class="hl-row" data-key="${esc(r.key || '')}">
+        <input type="checkbox" class="hl-on" ${r.on ? 'checked' : ''} title="${t('hl.on')}"/>
+        <input class="hl-name" value="${esc(r.key ? t(r.key) : r.name)}" placeholder="${t('hl.namePh')}"/>
+        <input class="hl-pat mono" value="${esc(r.pattern)}" placeholder="${t('hl.patternPh')}" spellcheck="false"/>
+        <select class="hl-color" data-c="${r.color}">${colorOpts(r.color)}</select>
+        <input type="checkbox" class="hl-ci" ${r.ci ? 'checked' : ''} title="${t('hl.ci')}"/>
+        <button type="button" class="ghost icon" data-a="del" title="${t('common.delete')}">${icon('close')}</button></div>`;
+    const head = `<span></span><span class="hd">${t('hl.name')}</span><span class="hd">${t('hl.pattern')}</span><span class="hd">${t('hl.color')}</span><span class="hd" title="${t('hl.ci')}">Aa</span><span></span>`;
+    const read = (r) => [...r.querySelectorAll('.hl-row')].map((el, i) => {
+        const key = el.dataset.key;
+        const name = el.querySelector('.hl-name').value.trim();
+        return {
+            id: 'r' + i, on: el.querySelector('.hl-on').checked,
+            key: key && name === t(key) ? key : '', name: key && name === t(key) ? '' : name,
+            pattern: el.querySelector('.hl-pat').value.trim(), color: el.querySelector('.hl-color').value,
+            ci: el.querySelector('.hl-ci').checked,
+        };
+    });
+    const saved = await modal(t('hl.title'), `<p class="hint">${t('hl.hint')}</p><div class="hl-rules"></div>
+        <div class="inline hl-btns"><button type="button" data-x="add">${icon('plus')}${t('hl.add')}</button><button type="button" data-x="reset">${t('hl.reset')}</button></div>`, {
+        wide: true,
+        onMount: (r) => {
+            const box = r.querySelector('.hl-rules');
+            const render = (rules) => {
+                box.innerHTML = head + rules.map(row).join('');
+                box.querySelectorAll('.hl-color').forEach((s) => { s.dataset.c = s.value; });
+            };
+            render(hlRules());
+            box.addEventListener('change', (e) => { if (e.target.classList.contains('hl-color')) e.target.dataset.c = e.target.value; });
+            box.addEventListener('click', (e) => {
+                if (!e.target.closest('[data-a=del]')) return;
+                const rules = read(r);
+                rules.splice([...box.querySelectorAll('.hl-row')].indexOf(e.target.closest('.hl-row')), 1);
+                render(rules);
+            });
+            r.querySelector('[data-x=add]').onclick = () => {
+                render([...read(r), {on: true, name: '', pattern: '', color: 'magenta', ci: true}]);
+                [...box.querySelectorAll('.hl-name')].pop().focus();
+            };
+            r.querySelector('[data-x=reset]').onclick = () => render(DEFAULT_HL_RULES);
+        },
+        onOk: (r) => {
+            const rules = read(r).filter((x) => x.pattern);
+            for (const x of rules) {
+                const err = checkPattern(x.pattern);
+                if (err) { toast(t('hl.bad', {p: x.pattern, e: err}), 'err'); return false; }
+            }
+            return rules;
+        },
+    });
+    if (!saved) return;
+    prefs.hlRules = JSON.stringify(saved) === JSON.stringify(DEFAULT_HL_RULES.map((x, i) => ({...x, id: 'r' + i}))) ? null : saved;
+    refreshHighlight();
+}
 
 // ---------------------------------------------------------------- MCP bridge
 

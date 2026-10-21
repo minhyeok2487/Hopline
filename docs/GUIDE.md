@@ -183,6 +183,7 @@ Open with the gear button or **Ctrl+,**. Changes preview immediately; **Cancel**
 | Color scheme | Terminal colors: Auto (follows the app theme), Hopline Dark, One Light, Dracula, Solarized Dark, Gruvbox Dark, Nord, Campbell |
 | Font, Font size, Line height | Terminal text. Monospace fonts with Korean fallback are recommended (D2Coding, Cascadia Mono). |
 | Cursor, Blink | Block, bar or underline cursor |
+| Keyword highlighting | Colours words in plain device output: errors and `down` red, warnings yellow, `up`/`connected` green, IP and MAC addresses blue, interface names cyan, Cisco severity 0-3 logs red. **Edit rules…** adds your own words or regular expressions, sets colours and order (rules higher in the list win), or resets to the defaults. Copied text is unchanged. |
 | Scrollback | Lines kept per tab |
 | Copy on select | Copy as soon as you select text |
 | Right-click pastes | Off: right-click opens the menu instead |

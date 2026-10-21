@@ -349,6 +349,19 @@ main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .modal .chk { display: flex; align-items: center; gap: 7px; color: var(--fg) !important; }
 .modal .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .claude-btns { flex-wrap: wrap; }
+.hl-rules { display: grid; grid-template-columns: auto minmax(90px, 1fr) minmax(160px, 2.2fr) auto auto auto; gap: 6px 8px; align-items: center; margin: 10px 0; }
+.hl-rules .hl-row { display: contents; }
+.hl-rules .hd { font-size: 11px; color: var(--dim); }
+.hl-rules input:not([type=checkbox]) { min-width: 0; width: 100%; }
+.hl-rules .mono { font: 12px var(--mono); }
+.hl-rules .hl-color { min-width: 86px; }
+.hl-rules .hl-color[data-c=red] { color: var(--bad); }
+.hl-rules .hl-color[data-c=yellow] { color: var(--warn); }
+.hl-rules .hl-color[data-c=green] { color: var(--ok); }
+.hl-rules .hl-color[data-c=blue] { color: #4f9dff; }
+.hl-rules .hl-color[data-c=cyan] { color: #22b8cf; }
+.hl-rules .hl-color[data-c=magenta] { color: #c678dd; }
+.hl-btns { display: flex; gap: 6px; }
 .modal .f .claude-btns > button { flex: none; }
 .lg-box { display: grid; gap: 8px; min-width: 0; }
 .lg-steps input:not([type=checkbox]) { min-width: 0; width: 100%; }

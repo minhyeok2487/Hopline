@@ -183,6 +183,7 @@ C:\Users\<사용자>\AppData\Roaming\Hopline\known_hosts
 | 색 테마 | 터미널 색: 자동(앱 테마 따라감), Hopline Dark, One Light, Dracula, Solarized Dark, Gruvbox Dark, Nord, Campbell |
 | 글꼴, 글자 크기, 줄 간격 | 터미널 글자. 한글이 잘 보이는 고정폭 글꼴(D2Coding, Cascadia Mono)을 추천합니다. |
 | 커서, 깜빡임 | 블록, 막대, 밑줄 |
+| 키워드 강조 | 장비 출력의 단어에 색을 입힙니다. 오류와 `down`은 빨강, 경고는 노랑, `up`/`connected`는 초록, IP·MAC 주소는 파랑, 인터페이스 이름은 하늘색, Cisco 심각도 0~3 로그는 빨강입니다. **규칙 편집…**에서 단어나 정규식을 추가하고 색과 순서를 정하거나(위 규칙이 우선) 기본값으로 되돌릴 수 있습니다. 복사되는 텍스트는 바뀌지 않습니다. |
 | 스크롤백 | 탭마다 보관할 줄 수 |
 | 드래그로 선택하면 바로 복사 | 선택하자마자 복사 |
 | 우클릭으로 붙여넣기 | 끄면 우클릭 시 메뉴가 열립니다. |
