@@ -24,6 +24,8 @@ export function DeleteSession(arg1:string):Promise<void>;
 
 export function Disconnect(arg1:string):Promise<void>;
 
+export function ExportBackup(arg1:string,arg2:boolean):Promise<string>;
+
 export function GetAutostart():Promise<boolean>;
 
 export function GetClaudeSetupPrompt():Promise<string>;
@@ -54,6 +56,8 @@ export function ListSessions():Promise<Array<main.Session>>;
 
 export function MoveSession(arg1:string,arg2:string):Promise<void>;
 
+export function OpenBackup():Promise<main.BackupInfo>;
+
 export function OpenLogFolder():Promise<void>;
 
 export function PickKeyFile():Promise<string>;
@@ -67,6 +71,8 @@ export function RenameFolder(arg1:string,arg2:string):Promise<void>;
 export function ReportOpenResult(arg1:string,arg2:string):Promise<void>;
 
 export function Resize(arg1:string,arg2:number,arg3:number):Promise<void>;
+
+export function RestoreBackup(arg1:string,arg2:string,arg3:boolean):Promise<main.RestoreResult>;
 
 export function RunMacro(arg1:Array<string>,arg2:string,arg3:number):Promise<void>;
 

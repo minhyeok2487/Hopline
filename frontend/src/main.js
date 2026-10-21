@@ -1612,6 +1612,8 @@ async function settingsDialog(before = null) {
         <h4>${t('set.secWindow')}</h4>
         <span></span><label class="chk"><input type="checkbox" name="closeToTray" ${closeToTray ? 'checked' : ''}/> ${t('set.closeToTray')}</label>
         <span></span><label class="chk"><input type="checkbox" name="autostart" ${autostart ? 'checked' : ''}/> ${t('set.autostart')}</label>
+        <h4>${t('bk.sec')}</h4>
+        <span></span><div class="inline bk-btns"><button type="button" data-x="bk-export">${icon('upload')}${t('bk.export')}</button><button type="button" data-x="bk-restore">${icon('import')}${t('bk.restore')}</button></div>
         <h4>${t('set.secUpdate')}</h4>
         <label>${t('set.version')}</label><div class="inline"><span class="mono">v${esc(version)}</span><button type="button" data-x="upd-check">${t('set.checkNow')}</button></div>
         <span></span><label class="chk"><input type="checkbox" name="updateCheck" ${updateCheck ? 'checked' : ''}/> ${t('set.updateCheck')}</label>
@@ -1636,6 +1638,8 @@ async function settingsDialog(before = null) {
             };
             r.querySelector('[data-x=hl-rules]').onclick = () => editHlRules();
             r.querySelector('[data-x=upd-check]').onclick = () => checkUpdateNow();
+            r.querySelector('[data-x=bk-export]').onclick = () => exportBackup();
+            r.querySelector('[data-x=bk-restore]').onclick = () => restoreBackup();
             r.querySelectorAll('.seg[data-pref]').forEach((s) => s.querySelectorAll('button').forEach((b) => {
                 b.onclick = () => {
                     s.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
@@ -1895,6 +1899,65 @@ async function checkUpdateNow() {
         if (info.available) updateDialog(info);
         else toast(t('upd.latest', {v: info.current}), 'ok');
     } catch (e) { toast(t('upd.checkFailed', {e: String(e)}), 'err'); }
+}
+
+// ---------------------------------------------------------------- backup
+
+async function exportBackup() {
+    await modal(t('bk.export').replace('…', ''), `<div class="f">
+        <span></span><label class="chk"><input type="checkbox" name="prefs" checked/> ${t('bk.withPrefs')}</label>
+        <span></span><label class="chk"><input type="checkbox" name="secrets"/> ${t('bk.withSecrets')}</label>
+        <label class="bk-pass hidden">${t('bk.pass')}</label><input class="bk-pass hidden" name="p1" type="password" autocomplete="new-password"/>
+        <label class="bk-pass hidden">${t('bk.pass2')}</label><input class="bk-pass hidden" name="p2" type="password" autocomplete="new-password"/>
+        <p class="full hint">${t('bk.exportHint')}</p></div>`, {
+        okText: t('bk.save'),
+        onMount: (r) => {
+            r.querySelector('[name=secrets]').addEventListener('change', (e) => {
+                r.querySelectorAll('.bk-pass').forEach((el) => el.classList.toggle('hidden', !e.target.checked));
+                if (e.target.checked) r.querySelector('[name=p1]').focus();
+            });
+        },
+        onOk: async (r) => {
+            let pass = '';
+            if (r.querySelector('[name=secrets]').checked) {
+                pass = r.querySelector('[name=p1]').value;
+                if (pass.length < 6) { toast(t('bk.passShort'), 'err'); return false; }
+                if (pass !== r.querySelector('[name=p2]').value) { toast(t('bk.passMismatch'), 'err'); return false; }
+            }
+            try {
+                const path = await App.ExportBackup(pass, r.querySelector('[name=prefs]').checked);
+                if (!path) return false; // save dialog cancelled
+                toast(t('bk.saved', {p: path}), 'ok');
+                return true;
+            } catch (e) { toast(String(e), 'err'); return false; }
+        },
+    });
+}
+
+async function restoreBackup() {
+    let info;
+    try { info = await App.OpenBackup(); } catch (e) { return toast(String(e), 'err'); }
+    if (!info || !info.path) return;
+    await modal(t('bk.restore').replace('…', ''), `<div class="f">
+        <span></span><p>${t('bk.summary', {s: info.sessions, m: info.macros, d: esc((info.exported || '').slice(0, 10))})}</p>
+        ${info.hasSecrets ? `<label>${t('bk.pass')}</label><input name="p" type="password" autofocus/><span></span><span class="hint">${t('bk.passOptional')}</span>` : ''}
+        ${info.hasPrefs ? `<span></span><label class="chk"><input type="checkbox" name="prefs"/> ${t('bk.restorePrefs')}</label>` : ''}
+        <p class="full hint">${t('bk.restoreHint')}</p></div>`, {
+        okText: t('bk.restoreGo'),
+        onOk: async (r) => {
+            try {
+                const res = await App.RestoreBackup(info.path, r.querySelector('[name=p]')?.value || '', !!r.querySelector('[name=prefs]')?.checked);
+                toast(t('bk.restored', {a: res.added, k: res.skipped, m: res.macros, p: res.passwords}), 'ok');
+                loadSessions();
+                loadMacros();
+                if (res.prefs) setTimeout(() => location.reload(), 800);
+                return true;
+            } catch (e) {
+                toast(String(e).includes('BAD_PASSPHRASE') ? t('bk.badPass') : String(e), 'err');
+                return false;
+            }
+        },
+    });
 }
 
 // ---------------------------------------------------------------- close to tray

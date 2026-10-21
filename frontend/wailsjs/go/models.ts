@@ -1,5 +1,27 @@
 export namespace main {
 	
+	export class BackupInfo {
+	    path: string;
+	    exported: string;
+	    sessions: number;
+	    macros: number;
+	    hasSecrets: boolean;
+	    hasPrefs: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.exported = source["exported"];
+	        this.sessions = source["sessions"];
+	        this.macros = source["macros"];
+	        this.hasSecrets = source["hasSecrets"];
+	        this.hasPrefs = source["hasPrefs"];
+	    }
+	}
 	export class ClaudeSetup {
 	    cliFound: boolean;
 	    registered: boolean;
@@ -169,6 +191,26 @@ export namespace main {
 	        this.name = source["name"];
 	        this.body = source["body"];
 	        this.delayMs = source["delayMs"];
+	    }
+	}
+	export class RestoreResult {
+	    added: number;
+	    skipped: number;
+	    macros: number;
+	    passwords: number;
+	    prefs: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RestoreResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.added = source["added"];
+	        this.skipped = source["skipped"];
+	        this.macros = source["macros"];
+	        this.passwords = source["passwords"];
+	        this.prefs = source["prefs"];
 	    }
 	}
 	export class SerialPortInfo {

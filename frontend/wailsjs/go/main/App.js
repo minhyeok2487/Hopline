@@ -46,6 +46,10 @@ export function Disconnect(arg1) {
   return window['go']['main']['App']['Disconnect'](arg1);
 }
 
+export function ExportBackup(arg1, arg2) {
+  return window['go']['main']['App']['ExportBackup'](arg1, arg2);
+}
+
 export function GetAutostart() {
   return window['go']['main']['App']['GetAutostart']();
 }
@@ -106,6 +110,10 @@ export function MoveSession(arg1, arg2) {
   return window['go']['main']['App']['MoveSession'](arg1, arg2);
 }
 
+export function OpenBackup() {
+  return window['go']['main']['App']['OpenBackup']();
+}
+
 export function OpenLogFolder() {
   return window['go']['main']['App']['OpenLogFolder']();
 }
@@ -132,6 +140,10 @@ export function ReportOpenResult(arg1, arg2) {
 
 export function Resize(arg1, arg2, arg3) {
   return window['go']['main']['App']['Resize'](arg1, arg2, arg3);
+}
+
+export function RestoreBackup(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RestoreBackup'](arg1, arg2, arg3);
 }
 
 export function RunMacro(arg1, arg2, arg3) {
