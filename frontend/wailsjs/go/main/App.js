@@ -66,6 +66,10 @@ export function GetMCPInfo() {
   return window['go']['main']['App']['GetMCPInfo']();
 }
 
+export function GetTFTPInfo() {
+  return window['go']['main']['App']['GetTFTPInfo']();
+}
+
 export function GetUIPrefs() {
   return window['go']['main']['App']['GetUIPrefs']();
 }
@@ -118,8 +122,16 @@ export function OpenLogFolder() {
   return window['go']['main']['App']['OpenLogFolder']();
 }
 
+export function OpenTFTPFolder() {
+  return window['go']['main']['App']['OpenTFTPFolder']();
+}
+
 export function PickKeyFile() {
   return window['go']['main']['App']['PickKeyFile']();
+}
+
+export function PickTFTPFolder() {
+  return window['go']['main']['App']['PickTFTPFolder']();
 }
 
 export function QuitApp() {
@@ -236,6 +248,14 @@ export function ShowWindow() {
 
 export function SkipUpdate(arg1) {
   return window['go']['main']['App']['SkipUpdate'](arg1);
+}
+
+export function StartTFTP(arg1, arg2, arg3) {
+  return window['go']['main']['App']['StartTFTP'](arg1, arg2, arg3);
+}
+
+export function StopTFTP() {
+  return window['go']['main']['App']['StopTFTP']();
 }
 
 export function WasUpdated() {

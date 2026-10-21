@@ -57,6 +57,9 @@ type App struct {
 	tray     trayState
 	quitting atomic.Bool
 
+	tftp     tftpState
+	noEvents bool // tests: no Wails runtime to send events to
+
 	updMu       sync.Mutex
 	update      UpdateInfo
 	justUpdated bool
@@ -80,6 +83,7 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) shutdown(ctx context.Context) {
 	systray.Quit()
+	a.StopTFTP()
 	a.stopMCP()
 	a.mu.Lock()
 	all := make([]*liveConn, 0, len(a.conns))

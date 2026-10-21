@@ -2035,6 +2035,79 @@ async function restoreBackup() {
     });
 }
 
+// ---------------------------------------------------------------- TFTP server
+
+const tftpLog = [];
+function setTftpRunning(on) {
+    state.tftpRunning = on;
+    $('#btn-tftp').classList.toggle('on', on);
+    $('#sb-tftp').className = 'sb-item' + (on ? ' on' : '');
+    $('#sb-tftp').innerHTML = on ? `${icon('server')}TFTP` : '';
+}
+EventsOn('tftp:state', (on) => setTftpRunning(on));
+EventsOn('tftp:transfer', (ev) => {
+    tftpLog.unshift(ev);
+    tftpLog.length = Math.min(tftpLog.length, 50);
+    const what = t(ev.dir === 'get' ? 'tftp.sent' : 'tftp.received', {f: ev.file, peer: ev.peer, size: fmtSize(ev.bytes || 0)});
+    toast(ev.error ? `TFTP: ${ev.file} · ${ev.error}` : `TFTP: ${what}`, ev.error ? 'err' : 'ok');
+    renderTftpLog();
+});
+function renderTftpLog() {
+    const box = $('.tftp-log');
+    if (!box) return;
+    box.innerHTML = tftpLog.length ? tftpLog.map((e) => `<div class="${e.error ? 'bad' : ''}"><span class="mono">${esc(e.time)}</span>
+        <span>${e.dir === 'get' ? '↓' : '↑'} ${esc(e.file)}</span><span class="hint">${esc(e.peer)}</span>
+        <span class="hint">${e.error ? esc(e.error) : fmtSize(e.bytes || 0)}</span></div>`).join('')
+        : `<p class="hint">${t('tftp.noLog')}</p>`;
+}
+
+async function tftpDialog() {
+    let info = await App.GetTFTPInfo();
+    const ip = () => info.ips[0] || '<PC-IP>';
+    const examples = () => `copy tftp://${ip()}/ios.bin flash:\ncopy running-config tftp://${ip()}/backups/sw1-confg`;
+    await modal(t('tftp.title'), `<div class="f">
+        <label>${t('mcp.status')}</label><div class="inline"><span data-el="state"></span><button type="button" data-x="toggle"></button></div>
+        <label>${t('tftp.root')}</label><div class="inline"><input name="root" value="${esc(info.root)}" spellcheck="false"/><button type="button" data-x="pick">${t('common.browse')}</button><button type="button" data-x="open">${icon('folderOpen')}</button></div>
+        <label>${t('common.port')}</label><input name="port" type="number" value="${info.port}"/>
+        <span></span><label class="chk"><input type="checkbox" name="write" ${info.write ? 'checked' : ''}/> ${t('tftp.write')}</label>
+        <label>${t('tftp.ips')}</label><div class="tftp-ips">${info.ips.map((x) => `<code>${esc(x)}</code>`).join('') || '-'}</div>
+        <label class="full">${t('tftp.example')}</label><pre class="full tftp-ex">${esc(examples())}</pre>
+        <label class="full">${t('tftp.log')}</label><div class="full tftp-log"></div>
+        <p class="full hint">${t('tftp.hint')}</p></div>`, {
+        okText: t('common.close'),
+        wide: true,
+        onMount: (r) => {
+            r.querySelector('[data-x=cancel]').classList.add('hidden');
+            const sync = () => {
+                r.querySelector('[data-el=state]').innerHTML = info.running
+                    ? `<b style="color:var(--ok)">${t('mcp.statusOn')}</b> <span class="mono">udp/${info.port}</span>` : t('mcp.statusOff');
+                const b = r.querySelector('[data-x=toggle]');
+                b.textContent = info.running ? t('tftp.stop') : t('tftp.start');
+                b.classList.toggle('primary', !info.running);
+                setTftpRunning(info.running);
+            };
+            sync();
+            renderTftpLog();
+            r.querySelector('[data-x=toggle]').onclick = async () => {
+                try {
+                    if (info.running) { await App.StopTFTP(); info = await App.GetTFTPInfo(); }
+                    else {
+                        info = await App.StartTFTP(r.querySelector('[name=root]').value.trim(), parseInt(r.querySelector('[name=port]').value, 10) || 69, r.querySelector('[name=write]').checked);
+                        toast(t('tftp.started', {p: info.port}), 'ok');
+                    }
+                } catch (e) { toast(String(e), 'err'); }
+                sync();
+            };
+            r.querySelector('[data-x=pick]').onclick = async () => {
+                const p = await App.PickTFTPFolder();
+                if (p) r.querySelector('[name=root]').value = p;
+            };
+            r.querySelector('[data-x=open]').onclick = () => App.OpenTFTPFolder();
+        },
+    });
+}
+$('#btn-tftp').onclick = () => tftpDialog();
+
 // ---------------------------------------------------------------- close to tray
 
 EventsOn('app:closeAsk', async () => {
@@ -2057,7 +2130,7 @@ EventsOn('app:closeAsk', async () => {
     applyLanguage();
     applyLayout();
     applyTheme();
-    await Promise.all([loadSessions(), loadMacros(), refreshMcpButton()]);
+    await Promise.all([loadSessions(), loadMacros(), refreshMcpButton(), App.GetTFTPInfo().then((i) => setTftpRunning(i.running)).catch(() => {})]);
     renderTabs();
     document.body.classList.remove('booting');
     if (await App.WasUpdated().catch(() => false)) toast(t('upd.done', {v: await App.GetVersion()}), 'ok');

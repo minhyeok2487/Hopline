@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	fyne.io/systray v1.12.2
 	github.com/modelcontextprotocol/go-sdk v1.8.0
+	github.com/pin/tftp/v3 v3.2.0
 	github.com/pkg/sftp v1.13.11
 	github.com/wailsapp/wails/v2 v2.16.0
 	go.bug.st/serial v1.8.0

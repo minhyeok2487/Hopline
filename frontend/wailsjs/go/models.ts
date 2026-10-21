@@ -291,6 +291,28 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class TFTPInfo {
+	    running: boolean;
+	    root: string;
+	    port: number;
+	    write: boolean;
+	    ips: string[];
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TFTPInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.running = source["running"];
+	        this.root = source["root"];
+	        this.port = source["port"];
+	        this.write = source["write"];
+	        this.ips = source["ips"];
+	        this.error = source["error"];
+	    }
+	}
 	export class UpdateInfo {
 	    available: boolean;
 	    current: string;

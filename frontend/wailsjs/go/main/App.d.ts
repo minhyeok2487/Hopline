@@ -34,6 +34,8 @@ export function GetCloseToTray():Promise<boolean>;
 
 export function GetMCPInfo():Promise<main.MCPInfo>;
 
+export function GetTFTPInfo():Promise<main.TFTPInfo>;
+
 export function GetUIPrefs():Promise<string>;
 
 export function GetUpdateCheck():Promise<boolean>;
@@ -60,7 +62,11 @@ export function OpenBackup():Promise<main.BackupInfo>;
 
 export function OpenLogFolder():Promise<void>;
 
+export function OpenTFTPFolder():Promise<void>;
+
 export function PickKeyFile():Promise<string>;
+
+export function PickTFTPFolder():Promise<string>;
 
 export function QuitApp():Promise<void>;
 
@@ -119,6 +125,10 @@ export function SftpUploadPaths(arg1:string,arg2:string,arg3:Array<string>):Prom
 export function ShowWindow():Promise<void>;
 
 export function SkipUpdate(arg1:string):Promise<void>;
+
+export function StartTFTP(arg1:string,arg2:number,arg3:boolean):Promise<main.TFTPInfo>;
+
+export function StopTFTP():Promise<void>;
 
 export function WasUpdated():Promise<boolean>;
 

@@ -77,6 +77,10 @@ type Settings struct {
 
 	UpdateCheck *bool  `json:"updateCheck,omitempty"` // nil = default (on)
 	SkipVersion string `json:"skipVersion,omitempty"`
+
+	TFTPRoot  string `json:"tftpRoot,omitempty"`
+	TFTPPort  int    `json:"tftpPort,omitempty"`
+	TFTPWrite bool   `json:"tftpWrite,omitempty"`
 }
 
 type storeFile struct {
