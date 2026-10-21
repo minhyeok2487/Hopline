@@ -26,8 +26,9 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 ![Hopline main window](docs/screenshots/main-dark.png)
 
 **Sessions and terminals**
-- Saved SSH and serial sessions in nested folders (drag & drop, rename, connect all), with search and keyboard navigation
-- Tabs you can reorder, rename and duplicate; quick connect with `user@host[:port]`
+- Saved SSH, Telnet and serial sessions in nested folders (drag & drop, rename, connect all), with search and keyboard navigation
+- Tabs you can reorder, rename and duplicate, and a split view with two or four tabs side by side; quick connect with `user@host[:port]` or `telnet host`
+- Import sessions from MobaXterm, PuTTY, SecureCRT and Xshell; back up and restore sessions, macros and settings (passwords optionally, encrypted with a passphrase)
 - Password, private-key and keyboard-interactive auth; an option for legacy key exchange and ciphers used by older switches and firewalls
 - Passwords are encrypted with Windows DPAPI, so only your Windows account can decrypt them
 - Trust-on-first-use host keys: a changed key blocks the connection and tells you which line to remove
@@ -36,6 +37,7 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 **Files and consoles**
 - SFTP side panel for the active tab: breadcrumbs, upload by button or drag and drop, download, rename, delete, new folder
 - Serial (COM) console with baud rate, data bits, parity and stop bits
+- Built-in TFTP server for firmware upgrades and config backups, limited to one folder
 
 **Working on many devices**
 - Multi-exec: type once into every checked tab
@@ -75,6 +77,7 @@ Hopline can run a local [Model Context Protocol](https://modelcontextprotocol.io
 | `run_command` | Send a command and return its output; detects the prompt, supports an `expect` regex and answers `--More--` pagers automatically |
 | `send_keys`, `read_output` | Interactive input (Ctrl+C, y/n) and reading the current screen |
 | `sftp_list`, `sftp_read_file`, `sftp_write_file`, `sftp_download`, `sftp_upload` | File operations over the tab's SSH connection |
+| `run_on_tabs` | Run one command on many tabs or saved sessions in parallel and get each output back |
 | `close_tab` | Disconnect and close a tab |
 
 Every tab tool also accepts `tab: "active"`, so you can connect yourself and simply say *"run show version in my current tab"*.

@@ -11,9 +11,11 @@ This guide walks through everyday use of Hopline: installing it, saving sessions
 - [Working in the terminal](#working-in-the-terminal)
 - [SFTP file panel](#sftp-file-panel)
 - [Serial console](#serial-console)
+- [TFTP server](#tftp-server)
 - [Logon actions (enable, jump hosts)](#logon-actions-enable-jump-hosts)
 - [Multi-exec and macros](#multi-exec-and-macros)
 - [Session logs](#session-logs)
+- [Import and backup](#import-and-backup)
 - [Settings](#settings)
 - [AI assistants (MCP)](#ai-assistants-mcp)
 - [Troubleshooting](#troubleshooting)
@@ -32,7 +34,7 @@ To uninstall, delete the Hopline executable and, if you want to remove your data
 
 The fastest way is **quick connect** at the top of the window:
 
-1. Type `user@host` or `user@host:port` and press **Enter**.
+1. Type `user@host` or `user@host:port` (or `telnet host[:port]` for Telnet) and press **Enter**.
 2. Enter the password when asked. Quick-connect sessions are not saved.
 
 While Hopline connects, the tab shows a **Connecting** card with the elapsed time and a **Cancel** button, so an unreachable device never freezes the window. When a connection drops, a bar at the bottom of the tab offers **Reconnect** (or press **Enter**) and **Close tab**.
@@ -52,6 +54,7 @@ Click **+** in the Sessions panel to create a session, or right-click an existin
 | Host, Port, User | Port defaults to 22. |
 | Password | Leave empty to be asked on every connect. With **Save password** checked, it is stored encrypted (see below). |
 | Private key | Optional path to an OpenSSH or PEM key (`id_ed25519`, `id_rsa`, …). PuTTY `.ppk` files must be converted first. |
+| Type | SSH, **Telnet** (port 23; with a user name and password saved, Hopline answers the login prompts; Telnet is not encrypted) or Serial |
 | Allow legacy algorithms | Enables older key exchanges and ciphers (for example `diffie-hellman-group1-sha1`, CBC ciphers) that old switches and firewalls still require. Leave it off for modern hosts. |
 
 Tips:
@@ -97,6 +100,7 @@ If you know why the key changed (the device was replaced or reinstalled), open t
 | Reorder tabs | Drag a tab |
 | Close a tab | **✕**, middle-click, or the tab's right-click menu. A connected tab asks first (can be turned off in Settings). |
 | Duplicate / reconnect | Tab right-click menu |
+| Split view | **Split** in the toolbar: one tab, two side by side, two stacked or four. Click a pane to work in it; clicking a tab puts it into the selected pane. Tab menu → **Show side by side**. |
 | Sidebar | **Ctrl+Shift+B** hides or shows it; drag its edge to resize, double-click the edge to reset |
 
 The status bar shows the active connection, terminal size, transfers in progress, multi-exec state and whether the MCP server is running.
@@ -123,6 +127,14 @@ Create a session with **Type: Serial (COM)**:
 - **Port** lists the COM ports Windows currently sees, with the adapter name when available. Click the refresh button after plugging in a USB console cable.
 - Common console settings are **9600 8N1** (Cisco and most switches) or **115200 8N1**.
 - If the port is not listed, install the driver for your USB-serial adapter (FTDI, Prolific, Silicon Labs CP210x) and check Device Manager.
+
+## TFTP server
+
+Click **TFTP** in the toolbar to serve files to devices, for firmware upgrades or config backups.
+
+- Choose the folder (default `Documents\Hopline\tftp`) and port (69), then **Start**. The dialog lists this PC's addresses and Cisco examples such as `copy tftp://<PC>/ios.bin flash:`.
+- Devices can only read files inside that folder. Turn on **Accept uploads from devices** to receive backups (`copy running-config tftp://<PC>/backups/sw1-confg`).
+- Transfers show up in the dialog and as notifications. On first start, allow Hopline in the Windows Firewall prompt. Stop the server when you're done.
 
 ## Logon actions (enable, jump hosts)
 
@@ -168,6 +180,12 @@ In the session editor, **Logon actions** holds *expect → send* steps that Hopl
 Click **Log** in the toolbar to start recording the active tab; the tab shows a red **REC** badge. Click again to stop.
 
 Logs are saved as plain text with color codes removed, to `Documents\Hopline\logs\<session>_<date>_<time>.log`. The folder button next to **Log** opens that folder.
+
+## Import and backup
+
+**Import from other terminals:** the import button above the session list (or right-click empty space) finds MobaXterm, PuTTY, SecureCRT and Xshell sessions on this PC and imports SSH, Telnet and serial sessions with their folders into a folder named after the program. Exported files (`.mxtsessions`, SecureCRT `.ini`, Xshell `.xsh`) can be imported too. Passwords are not imported, and sessions you already have are skipped.
+
+**Backup:** Settings › Backup › **Export settings** saves sessions, folders, macros and (optionally) appearance settings to a JSON file. Check **Include saved passwords** and set a backup passphrase to include them, encrypted, so you can restore on another PC. **Restore from backup** merges the file into your current data.
 
 ## Settings
 
@@ -218,7 +236,7 @@ Hopline can run a local MCP server so an AI assistant such as Claude Code can op
 
 **What you will see:** the tab the assistant uses comes to the front and shows an **AI** badge while it types. If a session has no saved password, Hopline asks **you** for it in its own window; the assistant never receives saved passwords.
 
-**Tools:** `list_sessions`, `list_tabs`, `open_session`, `run_command`, `send_keys`, `read_output`, `sftp_list`, `sftp_read_file`, `sftp_write_file`, `sftp_download`, `sftp_upload`, `close_tab`. `run_command` waits for the prompt (or an `expect` pattern, up to 600 s) and answers `--More--` pagers automatically.
+**Tools:** `list_sessions`, `list_tabs`, `open_session`, `run_command`, `run_on_tabs` (one command on many devices in parallel), `send_keys`, `read_output`, `sftp_list`, `sftp_read_file`, `sftp_write_file`, `sftp_download`, `sftp_upload`, `close_tab`. `run_command` waits for the prompt (or an `expect` pattern, up to 600 s) and answers `--More--` pagers automatically.
 
 **Staying safe**
 - Tell the assistant explicitly when only read-only commands are allowed, and review what it plans before approving tool calls.
