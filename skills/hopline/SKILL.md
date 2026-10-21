@@ -53,7 +53,7 @@ Save configuration (`write memory`, `copy run start`, `save config`) only when t
 - Slow commands (large `show tech`, debugs, file copies): pass a larger `timeout_sec` and an `expect` regex for the prompt, for example `expect: "#\\s*$"`.
 - Interactive questions (`[confirm]`, `y/n`, `Destination filename`) → answer with `send_keys` after you've confirmed the action is wanted. Stop a runaway command with `send_keys` text `"\u0003"` (Ctrl+C).
 - `read_output` shows what's on screen without typing, useful to see what the user just did or to check a command that timed out.
-- Several devices: work through them one by one, same command set on each, then compare.
+- Several devices: use `run_on_tabs` with `sessions` (saved session names) and/or `tabs` (open tabs, or `["all"]`). It opens what's needed and runs the command on every device in parallel, returning each output under its own header. Run read-only checks this way; apply changes one device at a time.
 
 Handy read-only sets:
 

@@ -178,6 +178,14 @@ type runIn struct {
 	NoAutoMore bool   `json:"no_auto_more,omitempty" jsonschema:"set true to NOT answer --More-- pager prompts with space automatically"`
 }
 
+type multiIn struct {
+	Tabs       []string `json:"tabs,omitempty" jsonschema:"connected tabs: ids or names from list_tabs, or [\"all\"] for every connected tab"`
+	Sessions   []string `json:"sessions,omitempty" jsonschema:"saved session names or ids to open (or reuse) and include"`
+	Command    string   `json:"command" jsonschema:"command line to send to every tab; Enter is appended"`
+	TimeoutSec int      `json:"timeout_sec,omitempty" jsonschema:"max seconds to wait per tab (default 30, max 600)"`
+	Expect     string   `json:"expect,omitempty" jsonschema:"optional regex; a tab finishes as soon as its output matches"`
+}
+
 type keysIn struct {
 	Tab    string `json:"tab" jsonschema:"tab id from list_tabs, the tab name, or \"active\" for the tab the user is looking at"`
 	Text   string `json:"text" jsonschema:"raw text to type; use JSON escapes for control keys, e.g. \u0003 = Ctrl+C, \t = Tab, \u001b = Esc"`
@@ -223,6 +231,7 @@ func (a *App) newMCPServer() *mcp.Server {
 			"Start with list_tabs: if the user already has a connected tab for the device, use it (pass tab=\"active\" for the tab the user is looking at). " +
 			"Only call open_session when no suitable tab is open; it reuses an existing tab of the same session unless new=true. " +
 			"Network devices: --More-- pagers are answered automatically. " +
+			"To run the same command on several devices, use run_on_tabs: it opens saved sessions if needed and runs on all of them in parallel. " +
 			"Never change device configuration unless the user explicitly asked for it.",
 	})
 
@@ -273,43 +282,16 @@ func (a *App) newMCPServer() *mcp.Server {
 			if err != nil {
 				return nil, nil, err
 			}
-			if !in.New {
-				if lc := a.tabForSession(sess.ID); lc != nil {
-					runtime.EventsEmit(a.ctx, "mcp:focus", lc.id)
-					return text(fmt.Sprintf("tab=%s (%s) already open, reusing it\n---\n%s", lc.id, lc.name, lc.out.tail(30))), nil, nil
-				}
+			lc, msg, err := a.openForMCP(ctx, sess, in.New)
+			if err != nil {
+				return nil, nil, err
 			}
-			connID := "m" + newID()
-			ch := make(chan string, 1)
-			a.mcp.pending.Store(connID, ch)
-			defer a.mcp.pending.Delete(connID)
-			runtime.EventsEmit(a.ctx, "mcp:open", map[string]string{"connId": connID, "sessionId": sess.ID})
-			select {
-			case msg := <-ch:
-				if msg != "" {
-					return nil, nil, fmt.Errorf("%s: connection failed: %s", sess.Name, msg)
-				}
-			case <-time.After(2 * time.Minute):
-				return nil, nil, errors.New("timed out waiting for the connection (the user may not have entered the password)")
-			case <-ctx.Done():
-				return nil, nil, ctx.Err()
-			}
-			lc := a.get(connID)
-			if lc == nil {
-				return nil, nil, errors.New("the connection closed right after opening")
-			}
-			note := ""
-			if lc.logonDone != nil { // let the session's logon actions finish before the agent types
-				select {
-				case <-lc.logonDone:
-				case <-time.After(3 * time.Minute):
-					note = " (logon actions still running)"
-				case <-ctx.Done():
-					return nil, nil, ctx.Err()
-				}
-			}
-			time.Sleep(1500 * time.Millisecond)
-			return text(fmt.Sprintf("tab=%s (%s) connected%s\n---\n%s", connID, sess.Name, note, lc.out.tail(30))), nil, nil
+			return text(fmt.Sprintf("tab=%s (%s) %s\n---\n%s", lc.id, lc.name, msg, lc.out.tail(30))), nil, nil
+		})
+
+	mcp.AddTool(s, &mcp.Tool{Name: "run_on_tabs", Description: "Run the same command on several devices at once and return each one's output, labelled by tab. Give connected tabs (ids or names, or \"all\") and/or saved sessions (opened or reused first, in parallel). Use for fleet checks such as the same show command on every switch; prefer it over calling run_command repeatedly."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in multiIn) (*mcp.CallToolResult, any, error) {
+			return a.runOnTabs(ctx, in)
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "run_command", Description: "Send a command line to a tab and return its output. Finishes when output goes idle, a shell/CLI prompt appears, `expect` matches, or the timeout hits. For long-running commands pass `expect` (e.g. the prompt) and a larger timeout_sec."},
@@ -669,4 +651,142 @@ loop:
 		out += "\n" + status
 	}
 	return out, nil
+}
+
+// openForMCP returns a connected tab for a saved session: an open one is
+// reused unless forceNew; otherwise the UI opens a new tab and we wait for it
+// (and for its logon actions).
+func (a *App) openForMCP(ctx context.Context, sess Session, forceNew bool) (*liveConn, string, error) {
+	if !forceNew {
+		if lc := a.tabForSession(sess.ID); lc != nil {
+			runtime.EventsEmit(a.ctx, "mcp:focus", lc.id)
+			return lc, "already open, reusing it", nil
+		}
+	}
+	connID := "m" + newID()
+	ch := make(chan string, 1)
+	a.mcp.pending.Store(connID, ch)
+	defer a.mcp.pending.Delete(connID)
+	runtime.EventsEmit(a.ctx, "mcp:open", map[string]string{"connId": connID, "sessionId": sess.ID})
+	select {
+	case msg := <-ch:
+		if msg != "" {
+			return nil, "", fmt.Errorf("%s: connection failed: %s", sess.Name, msg)
+		}
+	case <-time.After(2 * time.Minute):
+		return nil, "", fmt.Errorf("%s: timed out waiting for the connection (the user may not have entered the password)", sess.Name)
+	case <-ctx.Done():
+		return nil, "", ctx.Err()
+	}
+	lc := a.get(connID)
+	if lc == nil {
+		return nil, "", fmt.Errorf("%s: the connection closed right after opening", sess.Name)
+	}
+	msg := "connected"
+	if lc.logonDone != nil { // let the session's logon actions finish before the agent types
+		select {
+		case <-lc.logonDone:
+		case <-time.After(3 * time.Minute):
+			msg += " (logon actions still running)"
+		case <-ctx.Done():
+			return nil, "", ctx.Err()
+		}
+	}
+	time.Sleep(1500 * time.Millisecond)
+	return lc, msg, nil
+}
+
+// runOnTabs resolves the targets, opens saved sessions in parallel and runs
+// the command on every tab at the same time.
+func (a *App) runOnTabs(ctx context.Context, in multiIn) (*mcp.CallToolResult, any, error) {
+	if strings.TrimSpace(in.Command) == "" {
+		return nil, nil, errors.New("command is empty")
+	}
+	type target struct {
+		lc   *liveConn
+		note string
+	}
+	var targets []target
+	seen := map[*liveConn]bool{}
+	add := func(lc *liveConn, note string) {
+		if lc != nil && !seen[lc] {
+			seen[lc] = true
+			targets = append(targets, target{lc, note})
+		}
+	}
+	var problems []string
+	for _, q := range in.Tabs {
+		if strings.EqualFold(strings.TrimSpace(q), "all") {
+			a.mu.Lock()
+			ids := make([]string, 0, len(a.conns))
+			for id := range a.conns {
+				ids = append(ids, id)
+			}
+			a.mu.Unlock()
+			sort.Strings(ids)
+			for _, id := range ids {
+				add(a.get(id), "")
+			}
+			continue
+		}
+		lc, err := a.resolveTab(q)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s: %v", q, err))
+			continue
+		}
+		add(lc, "")
+	}
+	// Open the saved sessions in parallel.
+	type opened struct {
+		lc   *liveConn
+		note string
+		err  error
+	}
+	res := make([]opened, len(in.Sessions))
+	var wg sync.WaitGroup
+	for i, name := range in.Sessions {
+		wg.Add(1)
+		go func(i int, name string) {
+			defer wg.Done()
+			sess, err := a.findSession(name)
+			if err != nil {
+				res[i].err = err
+				return
+			}
+			res[i].lc, res[i].note, res[i].err = a.openForMCP(ctx, sess, false)
+		}(i, name)
+	}
+	wg.Wait()
+	for _, r := range res {
+		if r.err != nil {
+			problems = append(problems, r.err.Error())
+			continue
+		}
+		add(r.lc, r.note)
+	}
+	if len(targets) == 0 {
+		return nil, nil, fmt.Errorf("no tabs to run on: %s", strings.Join(problems, "; "))
+	}
+	outs := make([]string, len(targets))
+	for i, tg := range targets {
+		wg.Add(1)
+		go func(i int, lc *liveConn) {
+			defer wg.Done()
+			out, err := a.runCommand(ctx, lc, runIn{Command: in.Command, TimeoutSec: in.TimeoutSec, Expect: in.Expect})
+			if err != nil {
+				out = "[error] " + err.Error()
+			}
+			outs[i] = out
+		}(i, tg.lc)
+	}
+	wg.Wait()
+	var b strings.Builder
+	fmt.Fprintf(&b, "ran %q on %d tab(s)\n", in.Command, len(targets))
+	for _, p := range problems {
+		fmt.Fprintf(&b, "[skipped] %s\n", p)
+	}
+	for i, tg := range targets {
+		fmt.Fprintf(&b, "\n=== tab=%s | %s | %s ===\n%s\n", tg.lc.id, tg.lc.name, tg.lc.target, strings.TrimRight(outs[i], "\n"))
+	}
+	return text(b.String()), nil, nil
 }
