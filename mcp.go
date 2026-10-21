@@ -218,7 +218,7 @@ func text(s string) *mcp.CallToolResult {
 }
 
 func (a *App) newMCPServer() *mcp.Server {
-	s := mcp.NewServer(&mcp.Implementation{Name: "hopline", Title: "Hopline", Version: "0.4.0"}, &mcp.ServerOptions{
+	s := mcp.NewServer(&mcp.Implementation{Name: "hopline", Title: "Hopline", Version: "0.5.0"}, &mcp.ServerOptions{
 		Instructions: "Hopline is the user's terminal app. Sessions open as visible tabs the user can watch. " +
 			"Start with list_tabs: if the user already has a connected tab for the device, use it (pass tab=\"active\" for the tab the user is looking at). " +
 			"Only call open_session when no suitable tab is open; it reuses an existing tab of the same session unless new=true. " +
