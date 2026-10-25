@@ -1,5 +1,75 @@
 export namespace main {
 	
+	export class AIInfo {
+	    cli: boolean;
+	    path: string;
+	    model: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cli = source["cli"];
+	        this.path = source["path"];
+	        this.model = source["model"];
+	    }
+	}
+	export class AIMsg {
+	    role: string;
+	    text: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIMsg(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.role = source["role"];
+	        this.text = source["text"];
+	    }
+	}
+	export class AIRequest {
+	    kind: string;
+	    question: string;
+	    context: string;
+	    session: string;
+	    target: string;
+	    history: AIMsg[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AIRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.question = source["question"];
+	        this.context = source["context"];
+	        this.session = source["session"];
+	        this.target = source["target"];
+	        this.history = this.convertValues(source["history"], AIMsg);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class BackupInfo {
 	    path: string;
 	    exported: string;
@@ -20,6 +90,144 @@ export namespace main {
 	        this.macros = source["macros"];
 	        this.hasSecrets = source["hasSecrets"];
 	        this.hasPrefs = source["hasPrefs"];
+	    }
+	}
+	export class Check {
+	    id: string;
+	    name: string;
+	    sessions: string[];
+	    commands: string;
+	    mode: string;
+	    times: string;
+	    everyMin: number;
+	    enabled: boolean;
+	    ai: boolean;
+	    lastRun?: number;
+	    lastStatus?: string;
+	    lastRel?: string;
+	    lastNote?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Check(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.sessions = source["sessions"];
+	        this.commands = source["commands"];
+	        this.mode = source["mode"];
+	        this.times = source["times"];
+	        this.everyMin = source["everyMin"];
+	        this.enabled = source["enabled"];
+	        this.ai = source["ai"];
+	        this.lastRun = source["lastRun"];
+	        this.lastStatus = source["lastStatus"];
+	        this.lastRel = source["lastRel"];
+	        this.lastNote = source["lastNote"];
+	    }
+	}
+	export class CheckRun {
+	    rel: string;
+	    time: number;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CheckRun(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rel = source["rel"];
+	        this.time = source["time"];
+	        this.status = source["status"];
+	    }
+	}
+	export class RunFile {
+	    name: string;
+	    text: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.text = source["text"];
+	    }
+	}
+	export class CheckRunView {
+	    report: string;
+	    files: RunFile[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CheckRunView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.report = source["report"];
+	        this.files = this.convertValues(source["files"], RunFile);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CheckView {
+	    id: string;
+	    name: string;
+	    sessions: string[];
+	    commands: string;
+	    mode: string;
+	    times: string;
+	    everyMin: number;
+	    enabled: boolean;
+	    ai: boolean;
+	    lastRun?: number;
+	    lastStatus?: string;
+	    lastRel?: string;
+	    lastNote?: string;
+	    running: boolean;
+	    next: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CheckView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.sessions = source["sessions"];
+	        this.commands = source["commands"];
+	        this.mode = source["mode"];
+	        this.times = source["times"];
+	        this.everyMin = source["everyMin"];
+	        this.enabled = source["enabled"];
+	        this.ai = source["ai"];
+	        this.lastRun = source["lastRun"];
+	        this.lastStatus = source["lastStatus"];
+	        this.lastRel = source["lastRel"];
+	        this.lastNote = source["lastNote"];
+	        this.running = source["running"];
+	        this.next = source["next"];
 	    }
 	}
 	export class ClaudeSetup {
@@ -129,6 +337,82 @@ export namespace main {
 	        this.count = source["count"];
 	    }
 	}
+	export class LogFile {
+	    rel: string;
+	    session: string;
+	    time: number;
+	    size: number;
+	    active: boolean;
+	    summary: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rel = source["rel"];
+	        this.session = source["session"];
+	        this.time = source["time"];
+	        this.size = source["size"];
+	        this.active = source["active"];
+	        this.summary = source["summary"];
+	    }
+	}
+	export class LogHit {
+	    rel: string;
+	    session: string;
+	    time: number;
+	    line: number;
+	    text: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogHit(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rel = source["rel"];
+	        this.session = source["session"];
+	        this.time = source["time"];
+	        this.line = source["line"];
+	        this.text = source["text"];
+	    }
+	}
+	export class LogSettings {
+	    auto: boolean;
+	    dir: string;
+	    stamps: boolean;
+	    defaultDir: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.auto = source["auto"];
+	        this.dir = source["dir"];
+	        this.stamps = source["stamps"];
+	        this.defaultDir = source["defaultDir"];
+	    }
+	}
+	export class LogText {
+	    text: string;
+	    truncated: boolean;
+	    summary: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogText(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.truncated = source["truncated"];
+	        this.summary = source["summary"];
+	    }
+	}
 	export class LogonStep {
 	    id: string;
 	    expect: string;
@@ -180,6 +464,8 @@ export namespace main {
 	    name: string;
 	    body: string;
 	    delayMs: number;
+	    bar?: boolean;
+	    confirm?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Macro(source);
@@ -191,6 +477,8 @@ export namespace main {
 	        this.name = source["name"];
 	        this.body = source["body"];
 	        this.delayMs = source["delayMs"];
+	        this.bar = source["bar"];
+	        this.confirm = source["confirm"];
 	    }
 	}
 	export class RestoreResult {
@@ -213,6 +501,7 @@ export namespace main {
 	        this.prefs = source["prefs"];
 	    }
 	}
+	
 	export class SerialPortInfo {
 	    name: string;
 	    label: string;
@@ -246,6 +535,7 @@ export namespace main {
 	    autoLogon: boolean;
 	    logonCR: boolean;
 	    logonSteps: LogonStep[];
+	    log?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Session(source);
@@ -271,6 +561,7 @@ export namespace main {
 	        this.autoLogon = source["autoLogon"];
 	        this.logonCR = source["logonCR"];
 	        this.logonSteps = this.convertValues(source["logonSteps"], LogonStep);
+	        this.log = source["log"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

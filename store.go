@@ -39,6 +39,8 @@ type Session struct {
 	AutoLogon  bool        `json:"autoLogon"`
 	LogonCR    bool        `json:"logonCR"` // send Enter first (wakes serial consoles)
 	LogonSteps []LogonStep `json:"logonSteps"`
+
+	Log string `json:"log,omitempty"` // "" = follow the app setting, "on" = always record, "off" = never
 }
 
 // LogonStep is one expect/send pair. Hidden sends (passwords) are stored
@@ -58,6 +60,8 @@ type Macro struct {
 	Name    string `json:"name"`
 	Body    string `json:"body"`
 	DelayMs int    `json:"delayMs"`
+	Bar     bool   `json:"bar,omitempty"`     // show as a button on the command bar
+	Confirm bool   `json:"confirm,omitempty"` // ask before sending
 }
 
 type storedSession struct {
@@ -81,12 +85,19 @@ type Settings struct {
 	TFTPRoot  string `json:"tftpRoot,omitempty"`
 	TFTPPort  int    `json:"tftpPort,omitempty"`
 	TFTPWrite bool   `json:"tftpWrite,omitempty"`
+
+	LogAuto   bool   `json:"logAuto,omitempty"`   // record every session from the start
+	LogDir    string `json:"logDir,omitempty"`    // "" = Documents\Hopline\logs
+	LogStamps *bool  `json:"logStamps,omitempty"` // nil = default (on)
+
+	AIModel string `json:"aiModel,omitempty"` // "" = Claude Code's default
 }
 
 type storeFile struct {
 	Sessions []storedSession `json:"sessions"`
 	Macros   []Macro         `json:"macros"`
 	Folders  []string        `json:"folders,omitempty"` // folders that may hold no sessions
+	Checks   []Check         `json:"checks,omitempty"`
 	Settings Settings        `json:"settings"`
 }
 
@@ -97,6 +108,7 @@ type Store struct {
 	sessions []Session
 	macros   []Macro
 	folders  []string
+	checks   []Check
 	settings Settings
 }
 
@@ -146,12 +158,13 @@ func (s *Store) load() {
 	}
 	s.macros = f.Macros
 	s.folders = f.Folders
+	s.checks = f.Checks
 	s.settings = f.Settings
 }
 
 // saveLocked writes atomically; caller holds s.mu.
 func (s *Store) saveLocked() error {
-	f := storeFile{Macros: s.macros, Folders: s.folders, Settings: s.settings}
+	f := storeFile{Macros: s.macros, Folders: s.folders, Checks: s.checks, Settings: s.settings}
 	for _, ss := range s.sessions {
 		f.Sessions = append(f.Sessions, storedSession{Session: ss, EncPassword: ss.Password})
 	}
@@ -354,6 +367,26 @@ func (s *Store) DeleteMacro(id string) error {
 		}
 	}
 	return nil
+}
+
+// ReorderMacros puts the macros in the given id order; unknown ids are ignored
+// and macros missing from the list keep their place at the end.
+func (s *Store) ReorderMacros(ids []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	pos := map[string]int{}
+	for i, id := range ids {
+		pos[id] = i
+	}
+	sort.SliceStable(s.macros, func(i, j int) bool {
+		pi, iok := pos[s.macros[i].ID]
+		pj, jok := pos[s.macros[j].ID]
+		if iok != jok {
+			return iok
+		}
+		return iok && pi < pj
+	})
+	return s.saveLocked()
 }
 
 func (s *Store) Settings() Settings {

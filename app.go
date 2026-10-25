@@ -35,7 +35,9 @@ type liveConn struct {
 	ssh       *sshConn // nil for serial
 
 	logMu sync.Mutex
-	log   *os.File
+	log   *sessionLog
+
+	hidden bool // opened in the background by a scheduled check; not a UI tab
 
 	out outTap // recent output + MCP captures
 
@@ -79,6 +81,7 @@ func (a *App) startup(ctx context.Context) {
 	a.startTray()
 	go updateSkill()
 	go a.watchUpdates()
+	go a.watchChecks()
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -140,6 +143,7 @@ func (a *App) DeleteSession(id string) error { return a.store.Delete(id) }
 func (a *App) ListMacros() []Macro              { return a.store.Macros() }
 func (a *App) SaveMacro(m Macro) (Macro, error) { return a.store.PutMacro(m) }
 func (a *App) DeleteMacro(id string) error      { return a.store.DeleteMacro(id) }
+func (a *App) ReorderMacros(ids []string) error { return a.store.ReorderMacros(ids) }
 func (a *App) PickKeyFile() (string, error) {
 	home, _ := os.UserHomeDir()
 	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
@@ -184,6 +188,11 @@ func (a *App) ConnectAdhoc(connID string, s Session, password string, cols, rows
 }
 
 func (a *App) connect(connID string, s Session, password string, cols, rows int) error {
+	return a.dial(connID, s, password, cols, rows, false)
+}
+
+// dial opens the backend connection; hidden ones (scheduled checks) have no UI tab.
+func (a *App) dial(connID string, s Session, password string, cols, rows int, hidden bool) error {
 	// Reserve the id up front so a second caller (e.g. another window) can't
 	// dial the same connection in parallel.
 	a.mu.Lock()
@@ -201,7 +210,7 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 		cancel()
 	}()
 
-	lc := &liveConn{id: connID, name: s.Name, sessionID: s.ID, target: targetOf(s), kind: s.Kind}
+	lc := &liveConn{id: connID, name: s.Name, sessionID: s.ID, target: targetOf(s), kind: s.Kind, hidden: hidden}
 	out := &emitter{a: a, lc: lc}
 	// Capture from the first byte so a prompt printed right after connecting isn't missed.
 	var logonCap *capture
@@ -246,6 +255,11 @@ func (a *App) connect(connID string, s Session, password string, cols, rows int)
 	a.mu.Lock()
 	a.conns[connID] = lc
 	a.mu.Unlock()
+	if !hidden && a.wantsLog(s) {
+		if _, err := a.startLog(lc); err != nil {
+			println("auto log:", err.Error())
+		}
+	}
 	go func() { a.closeConn(lc, wait()) }()
 	if logonCap != nil {
 		go a.runLogon(lc, s, logonCap, password)
@@ -328,7 +342,7 @@ func (a *App) closeConn(lc *liveConn, reason string) {
 	_ = lc.c.Close()
 	lc.logMu.Lock()
 	if lc.log != nil {
-		_ = lc.log.Close()
+		lc.log.close()
 		lc.log = nil
 	}
 	lc.logMu.Unlock()
@@ -385,49 +399,6 @@ func (a *App) RunMacro(connIDs []string, body string, delayMs int) {
 
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()][0-9A-Za-z]|\x1b[=>78]|\x07|\r`)
 
-// SetLogging toggles a plain-text session log and returns the log path.
-func (a *App) SetLogging(connID string, on bool) (string, error) {
-	lc := a.get(connID)
-	if lc == nil {
-		return "", errors.New(T("err.notConnected"))
-	}
-	lc.logMu.Lock()
-	defer lc.logMu.Unlock()
-	if !on {
-		if lc.log != nil {
-			_ = lc.log.Close()
-			lc.log = nil
-		}
-		return "", nil
-	}
-	if lc.log != nil {
-		return lc.log.Name(), nil
-	}
-	dir := logsDir()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", err
-	}
-	safe := strings.Map(func(r rune) rune {
-		if strings.ContainsRune(`\/:*?"<>| `, r) {
-			return '_'
-		}
-		return r
-	}, lc.name)
-	p := filepath.Join(dir, fmt.Sprintf("%s_%s.log", safe, time.Now().Format("20060102_150405")))
-	f, err := os.Create(p)
-	if err != nil {
-		return "", err
-	}
-	lc.log = f
-	return p, nil
-}
-
-func (a *App) OpenLogFolder() {
-	dir := logsDir()
-	_ = os.MkdirAll(dir, 0o755)
-	runtime.BrowserOpenURL(a.ctx, "file:///"+filepath.ToSlash(dir))
-}
-
 // emitter forwards backend output to the UI (base64 keeps raw bytes intact)
 // and to the session log if enabled.
 type emitter struct {
@@ -440,7 +411,7 @@ func (e *emitter) Write(p []byte) (int, error) {
 	e.lc.out.write(p)
 	e.lc.logMu.Lock()
 	if e.lc.log != nil {
-		_, _ = e.lc.log.Write(ansiRe.ReplaceAll(p, nil))
+		e.lc.log.write(p)
 	}
 	e.lc.logMu.Unlock()
 	return len(p), nil

@@ -41,12 +41,18 @@ Hopline keeps the parts of a network engineer's terminal you use every day (save
 
 **Working on many devices**
 - Multi-exec: type once into every checked tab
-- Macros: named command lists sent line by line with a configurable delay
+- Macros: named command lists sent line by line with a configurable delay; pin them to the **command bar** under the tabs for one-click buttons (`Alt+1`–`9`), with `{{variables}}` asked at run time and an optional confirmation
 - Logon actions: expect/send steps run after connecting (enable, console login, jump hosts), with hidden values encrypted
 - Built-in updates: notices new releases, verifies the download and restarts into the new version
 - Keeps running in the tray when the window is closed, so the MCP server and connections stay up; optional start with Windows
 - Keyword highlighting for device output (down/error, up, warnings, IP/MAC, interface names) with editable rules
-- Per-tab session logs saved as plain text (escape codes stripped)
+- Session logs: record every session automatically or per session, one folder per device, a timestamp on every line, and a log browser with search across all logs
+
+**AI built in** (uses your installed [Claude Code](https://claude.com/claude-code), no API key)
+- AI assistant panel (`Ctrl+Shift+A`) that reads the current tab's screen; suggested commands come with **Insert** / **Run** buttons, and commands that change configuration are only inserted
+- Select output in the terminal and click **Ask AI** to have it explained
+- AI work summary of a session log: commands run, changes, problems seen
+- Scheduled checks: at set times Hopline connects in the background, runs read-only commands, saves the output and lets the AI compare it with the previous run
 
 **Comfort**
 - Dark and light themes, seven terminal color schemes, UI size (90–150%), font, size, line height and cursor settings
@@ -128,7 +134,8 @@ Hopline lets an AI assistant type into real devices, so the defaults are conserv
 |---|---|
 | Sessions, macros, settings | `%APPDATA%\Hopline\data.json` |
 | Known host keys | `%APPDATA%\Hopline\known_hosts` |
-| Session logs | `Documents\Hopline\logs` |
+| Session logs | `Documents\Hopline\logs\<session>\` (changeable in Settings) |
+| Scheduled check results | `Documents\Hopline\logs\_checks\<check>\<run>\` |
 
 ## Keyboard shortcuts
 
@@ -138,6 +145,8 @@ Hopline lets an AI assistant type into real devices, so the defaults are conserv
 | `Ctrl+Shift+F` | Find in terminal |
 | `Ctrl + =` / `Ctrl + -` / `Ctrl+0` | Font size up / down / reset |
 | `Ctrl+Shift+B` | Show or hide the sidebar |
+| `Ctrl+Shift+A` | AI assistant panel |
+| `Alt+1` … `Alt+9` | Run a command bar button |
 | `Ctrl+,` | Settings |
 | Drag / right-click | Copy / paste (Shift+right-click opens the menu) |
 
@@ -145,7 +154,9 @@ Hopline lets an AI assistant type into real devices, so the defaults are conserv
 
 | Path | Purpose |
 |---|---|
-| `app.go` | Connection manager, terminal I/O events, macros, logging |
+| `app.go` | Connection manager, terminal I/O events, macros |
+| `logs.go` | Session logs: recording, browsing, search |
+| `ai.go`, `checks.go` | AI assistant via the Claude Code CLI, scheduled checks |
 | `ssh.go`, `sftp.go`, `serial.go` | SSH sessions and host keys, SFTP, serial ports |
 | `mcp.go`, `outtap.go` | MCP server and tools, output capture |
 | `store.go`, `dpapi_windows.go` | Session storage and password encryption |

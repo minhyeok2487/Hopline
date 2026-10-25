@@ -66,11 +66,15 @@
             <button id="btn-multi" data-i18n-title="top.multiTip"><i data-icon="multi"></i><span data-i18n="top.multi"></span></button>
             <button id="btn-log" data-i18n-title="top.logTip"><i data-icon="record"></i><span data-i18n="top.log"></span></button>
             <button id="btn-logdir" class="icon" data-i18n-title="top.logdir"><i data-icon="logs"></i></button>
+            <button id="btn-checks" data-i18n-title="chk.tip"><i data-icon="clock"></i><span data-i18n="chk.btn"></span></button>
+            <button id="btn-ai" data-i18n-title="ai.tip"><i data-icon="spark"></i><span>AI</span></button>
             <button id="btn-mcp" data-i18n-title="top.mcp"><i data-icon="bot"></i><span>MCP</span></button>
             <button id="btn-tftp" data-i18n-title="tftp.tip"><i data-icon="server"></i><span>TFTP</span></button>
             <button id="btn-settings" class="icon" data-i18n-title="top.settings"><i data-icon="gear"></i></button>
         </div>
         <div id="tabbar" role="tablist"></div>
+        <div id="cmdbar" class="hidden"></div>
+        <div id="work">
         <div id="terms">
             <div id="empty">
                 <div class="empty-inner">
@@ -87,6 +91,18 @@
                 </div>
             </div>
         </div>
+        <aside id="ai" class="hidden">
+            <div class="ai-head"><i data-icon="spark"></i><b data-i18n="ai.title"></b><span class="ai-target grow"></span>
+                <button class="ghost icon" data-x="ai-new" data-i18n-title="ai.new"><i data-icon="refresh"></i></button>
+                <button class="ghost icon" data-x="ai-close" data-i18n-title="common.close"><i data-icon="close"></i></button></div>
+            <div class="ai-log"></div>
+            <div class="ai-input">
+                <textarea rows="2" data-i18n-placeholder="ai.ph" spellcheck="false"></textarea>
+                <div class="row"><label class="chk grow"><input type="checkbox" name="ai-screen" checked/> <span data-i18n="ai.withScreen"></span></label>
+                    <button class="primary" data-x="ai-send"><i data-icon="send"></i><span data-i18n="ai.send"></span></button></div>
+            </div>
+        </aside>
+        </div>
         <footer id="statusbar">
             <span id="sb-conn" class="sb-item"></span>
             <span id="sb-xfer" class="sb-item grow"></span>
@@ -98,6 +114,7 @@
     </main>
 </div>
 <div id="ctx" class="ctx hidden"></div>
+<button id="ai-chip" class="hidden"><i data-icon="spark"></i><span data-i18n="ai.chip"></span></button>
 <div id="modal-root"></div>
 <div id="toast"></div>
 <script src="./src/main.js" type="module"></script>

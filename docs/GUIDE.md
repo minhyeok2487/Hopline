@@ -15,6 +15,7 @@ This guide walks through everyday use of Hopline: installing it, saving sessions
 - [Logon actions (enable, jump hosts)](#logon-actions-enable-jump-hosts)
 - [Multi-exec and macros](#multi-exec-and-macros)
 - [Session logs](#session-logs)
+- [AI assistant and scheduled checks](#ai-assistant-and-scheduled-checks)
 - [Import and backup](#import-and-backup)
 - [Settings](#settings)
 - [AI assistants (MCP)](#ai-assistants-mcp)
@@ -172,11 +173,42 @@ In the session editor, **Logon actions** holds *expect → send* steps that Hopl
 - For network devices, start with a pager-off line such as `terminal length 0` so long output is not interrupted by `--More--`.
 - Raise the line delay for slow devices or commands that take a moment to return the prompt.
 
+**Command bar.** Macros marked **Show on the command bar** appear as buttons in a row under the tabs. Click one to send it to the active tab (or every checked tab while multi-exec is on), **Shift+click** to send it to every open tab, or press **Alt+1** … **Alt+9**. Drag buttons to reorder them, right-click one to edit it, and use **+** to add a new one. Hide the bar from its right-click menu or in Settings › Behavior.
+
+- **Variables:** write `{{name}}` or `{{name|default}}` in a command, e.g. `show interface {{port|Gi0/1}}`. Hopline asks for the value when the macro runs and remembers the last one.
+- **Ask before sending:** turn this on for macros that change configuration (`write memory`, `reload`). You see the exact text and the target tabs before anything is sent.
+
 ## Session logs
 
 Click **Log** in the toolbar to start recording the active tab; the tab shows a red **REC** badge. Click again to stop.
 
-Logs are saved as plain text with color codes removed, to `Documents\Hopline\logs\<session>_<date>_<time>.log`. The folder button next to **Log** opens that folder.
+- **Record automatically:** Settings › Session logs › *Record every session automatically* starts a log as soon as any session connects. Each session can override it in its editor (**Record**: follow app setting / always / never).
+- **One folder per device:** logs go to `Documents\Hopline\logs\<session>\<date>_<time>.log`. The folder can be changed in Settings.
+- **Clean text:** colour codes are removed, backspaces are applied (so `--More--` prompts disappear), and every line starts with the time it arrived, like `[2026-10-25 14:03:21]`. Turn the timestamps off in Settings if you don't want them.
+
+**Browse and search.** The list button next to **Log** opens the log browser: sessions on the left, the log on the right. Type in the box to filter sessions; press **Enter** to search inside every log and click a result to jump to that line. From a log you can make an **AI work summary**, show it in Explorer or delete it. Right-click a tab › **View log** opens the log of that tab.
+
+## AI assistant and scheduled checks
+
+Hopline's AI features run on the [Claude Code](https://claude.com/claude-code) CLI installed on your PC, with the account it is signed in to; there is no API key to set. The AI gets the text Hopline sends it (screen, selection, log) and nothing else: it can't type in your sessions by itself, and saved passwords never leave Hopline. Settings › AI assistant shows whether Claude Code was found and lets you pick a model.
+
+**AI assistant panel** (**AI** button or `Ctrl+Shift+A`). Ask about the current tab in plain words: *"anything wrong here?"*, *"how do I see interfaces that are down?"*. With **Include the terminal screen** checked, the last screenful of the tab is sent along. Commands in the answer get buttons:
+
+- **Insert** types the command without Enter, so you can check or edit it first.
+- **Run** types it and presses Enter. Commands that change configuration (`configure`, `no shutdown`, `reload`, `write` and the like) are shown in orange with **Insert** only.
+
+Each tab keeps its own conversation; the refresh button starts a new one.
+
+**Ask AI about a selection.** Select output in the terminal and click the **Ask AI** chip that appears next to it to get an explanation, what looks abnormal and what to check next. Turn the chip off in Settings if you don't use it.
+
+**AI work summary.** Right-click a tab › **AI work summary**, or open a log and click **AI work summary**, for a short report: summary, commands run, configuration changes, problems seen and follow-up. Summaries of saved logs are kept next to the log as `<name>.summary.md`.
+
+**Scheduled checks** (**Checks** button). A check is a list of read-only commands run on chosen saved sessions daily at set times (e.g. `08:30, 18:00`), every N minutes, or only when you click **Run**.
+
+- Hopline must be running (the tray is enough). A run missed while it was closed is caught up within two hours.
+- It connects in the background without opening tabs, runs the session's logon actions first, then the commands, and disconnects. Sessions need a saved password or key.
+- Commands that could change configuration can't be saved in a check.
+- Output is saved per device under `Documents\Hopline\logs\_checks\<check>\<run>\`. With **AI** on, the AI reads the output, compares it with the previous run and marks the run OK, needs a look or problem found. You get a notice when a run ends; **Results** shows the summary and each device's output.
 
 ## Import and backup
 
@@ -264,4 +296,7 @@ Closing the window does not quit Hopline: it hides to the notification area (sys
 | COM port not listed | Install the USB-serial driver, replug the cable, click refresh in the session editor. |
 | Claude Code cannot reach hopline (*connection refused*) | Hopline must be running with the MCP server on. Check the port in the MCP dialog matches the registered URL. |
 | Claude Code gets *401 Unauthorized* | The token changed. Copy the command from the MCP dialog again and re-register (`claude mcp remove hopline -s user`, then add). |
+| AI: *Claude Code isn't installed* | Install Claude Code (see the MCP dialog), then reopen the AI panel. |
+| AI: *sign-in has expired* | Run `claude` in PowerShell, sign in again, then retry. |
+| A scheduled check says *No saved password or key* | Save the password in the session (edit the session, enter it, keep **Save password** checked). |
 | Pasting asks for confirmation every time | Turn off **Confirm multi-line paste** in Settings. |

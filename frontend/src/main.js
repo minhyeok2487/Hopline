@@ -12,6 +12,7 @@ import {icon, hydrateIcons} from './icons';
 import {SCHEMES, FONTS, resolveScheme, fontStack} from './themes';
 import {LANGS, t, setLang, resolveLang, applyStatic} from './i18n';
 import {Highlighter, DEFAULT_HL_RULES, HL_COLORS, compileRules, checkPattern} from './highlight';
+import {renderMD, RISKY_CMD} from './md';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -54,6 +55,11 @@ const DEFAULT_PREFS = {
     sideCollapsed: false,
     recents: [],               // [{id} | {adhoc:{host,user,port}}, t]
     collapsed: [],             // folder paths the user collapsed
+    cmdBar: true,              // command bar under the tabs
+    aiChip: true,              // "Ask AI" button on terminal selections
+    aiOpen: false,             // AI panel shown
+    aiWidth: 360,
+    macroVars: {},             // last values typed for {{variables}}
 };
 let prefs = {...DEFAULT_PREFS};
 let saveTimer;
@@ -210,12 +216,13 @@ addEventListener('keydown', (e) => {
 }, true);
 
 /** modal(title, html, opts) — onOk(root) returns false to keep it open. Resolves to onOk's result or null. */
-function modal(title, bodyHtml, {okText = t('common.ok'), cancelText = t('common.cancel'), onOk, onMount, onCancel, wide = false, danger = false, focusCancel = false} = {}) {
+function modal(title, bodyHtml, {okText = t('common.ok'), cancelText = t('common.cancel'), onOk, onMount, onCancel, wide = false, danger = false, focusCancel = false, noCancel = false} = {}) {
     return new Promise((resolve) => {
         const bg = document.createElement('div');
         bg.className = 'modal-bg';
-        bg.innerHTML = `<div class="modal${wide ? ' wide' : ''}" role="dialog" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${bodyHtml}
-            <div class="btns"><button data-x="cancel">${esc(cancelText)}</button><button class="primary${danger ? ' danger-btn' : ''}" data-x="ok">${esc(okText)}</button></div></div>`;
+        const size = wide === 'xl' ? ' wide xl' : wide ? ' wide' : '';
+        bg.innerHTML = `<div class="modal${size}" role="dialog" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${bodyHtml}
+            <div class="btns">${noCancel ? '' : `<button data-x="cancel">${esc(cancelText)}</button>`}<button class="primary${danger ? ' danger-btn' : ''}" data-x="ok">${esc(okText)}</button></div></div>`;
         if (danger) bg.querySelector('[data-x=ok]').style.cssText = 'background:var(--bad);border-color:var(--bad)';
         $('#modal-root').appendChild(bg);
         const root = bg.firstElementChild;
@@ -225,7 +232,7 @@ function modal(title, bodyHtml, {okText = t('common.ok'), cancelText = t('common
             const v = onOk ? await onOk(root) : true;
             if (v !== false) close(v);
         };
-        root.querySelector('[data-x=cancel]').onclick = cancel;
+        if (!noCancel) root.querySelector('[data-x=cancel]').onclick = cancel;
         root.querySelector('[data-x=ok]').onclick = ok;
         // Ignore the backdrop briefly so the second click of a double-click doesn't cancel right away.
         const opened = performance.now();
@@ -617,6 +624,9 @@ async function editSession(s) {
             <div class="inline lg-btns"><button type="button" data-x="lg-add">${icon('plus')}${t('lg.add')}</button><button type="button" data-x="lg-enable">${t('lg.preset')}</button></div>
             <p class="hint">${t('lg.hint')}</p>
         </div>
+
+        <h4>${t('log.sec')}</h4>
+        <label>${t('log.record')}</label><select name="log"><option value="">${t('log.follow')}</option><option value="on">${t('log.always')}</option><option value="off">${t('log.never')}</option></select>
     </div>`;
 
     let kind = s.kind;
@@ -627,6 +637,7 @@ async function editSession(s) {
             mountLogonEditor(r, s.logonSteps || []);
             r.querySelector('[name=parity]').value = s.parity || 'N';
             r.querySelector('[name=stopBits]').value = s.stopBits || '1';
+            r.querySelector('[name=log]').value = s.log || '';
             const cls = {ssh: 'ssh', telnet: 'tel', serial: 'ser'};
             const sync = () => {
                 r.querySelectorAll('[data-seg=kind] button').forEach((b) => b.classList.toggle('on', b.dataset.v === kind));
@@ -670,7 +681,7 @@ async function editSession(s) {
                 host: v('host'), port: parseInt(v('port'), 10) || 22, user: v('user'), keyPath: v('keyPath'),
                 legacy: r.querySelector('[name=legacy]').checked,
                 comPort: v('comPort'), baud: parseInt(v('baud'), 10) || 9600, dataBits: parseInt(v('dataBits'), 10),
-                parity: v('parity'), stopBits: v('stopBits'),
+                parity: v('parity'), stopBits: v('stopBits'), log: v('log'),
             };
             if (out.kind !== 'serial' && !out.host) { toast(t('sess.needHost'), 'err'); r.querySelector('[name=host]').focus(); return false; }
             if (out.kind === 'serial' && !out.comPort) { toast(t('sess.needCom'), 'err'); return false; }
@@ -837,7 +848,7 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
 
     const tab = {
         id, session: s, adhoc, title: s.name, kind: s.kind, term, fit, search, pane,
-        status: 'connecting', logging: false, multi: true, mcpPending: viaMcp, bot: false,
+        status: 'connecting', logging: false, multi: true, mcpPending: viaMcp, bot: false, ai: {msgs: [], busy: null},
         hl: new Highlighter(term, () => hlCompiled, () => resolveScheme(prefs.termScheme, isDark())),
     };
     state.tabs.push(tab);
@@ -873,7 +884,12 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
     term.onSelectionChange(() => {
         const sel = term.getSelection();
         if (sel && prefs.copyOnSelect) ClipboardSetText(sel);
+        if (!sel.trim()) hideAIChip();
     });
+    pane.querySelector('.term').addEventListener('mouseup', (e) => {
+        if (e.button === 0) setTimeout(() => showAIChip(tab, e.clientX, e.clientY), 0);
+    });
+    term.onScroll(hideAIChip);
     term.attachCustomKeyEventHandler((e) => {
         if (e.type !== 'keydown') return true;
         if (handleGlobalKey(e)) return false;
@@ -939,6 +955,7 @@ async function connectTab(tab, password = '') {
         else await App.Connect(tab.id, tab.session.id, password, term.cols, term.rows);
         hideConnecting(tab);
         tab.status = 'open';
+        tab.logging = !!(await App.LogPath(tab.id).catch(() => ''));
         reportMcp(tab, '');
         pushRecent(tab);
         renderTabs();
@@ -1018,6 +1035,8 @@ async function closeTab(tab, force = false) {
     App.Disconnect(tab.id);
     hideConnecting(tab);
     EventsOff('data:' + tab.id, 'closed:' + tab.id, 'logon:' + tab.id);
+    if (tab.ai.busy) App.AICancel(tab.ai.busy);
+    hideAIChip();
     tab.hl.dispose();
     tab.term.dispose();
     tab.pane.remove();
@@ -1144,6 +1163,8 @@ function renderTabs() {
         ${tb.logging ? '<span class="badge rec">REC</span>' : ''}${tb.bot ? `<span class="badge bot" title="${esc(tb.bot)}">AI</span>` : ''}
         <button class="x" title="${t('common.close')}">${icon('close')}</button></div>`).join('');
     renderStatus();
+    renderCmdBar();
+    renderAI();
 }
 
 // Mark the active tab without rebuilding the bar: rebuilding between the two
@@ -1158,6 +1179,7 @@ function syncActiveTab() {
     }
     $('#btn-log').classList.toggle('on', !!state.active?.logging);
     renderStatus();
+    renderAI();
 }
 
 $('#tabbar').addEventListener('click', (e) => {
@@ -1191,6 +1213,10 @@ $('#tabbar').addEventListener('contextmenu', (e) => {
         ...(state.active && state.active !== tab ? [{label: t('split.with'), icon: 'split', fn: () => setSplit(split.mode === 'single' ? 'v2' : split.mode, tab)}] : []),
         {label: t('common.find'), icon: 'search', fn: () => { activate(tab); openFind(tab); }},
         {label: t('common.clear'), fn: () => tab.term.clear()},
+        '-',
+        {label: t('ai.askTab'), icon: 'spark', fn: () => { activate(tab); toggleAI(true); }},
+        {label: t('ai.summaryTab'), icon: 'spark', fn: () => summarizeTab(tab)},
+        {label: t('log.viewTab'), icon: 'logs', fn: async () => logViewer({rel: await App.LogPath(tab.id).catch(() => ''), session: tab.title})},
         '-',
         {label: t('tab.closeOthers'), fn: () => state.tabs.filter((x) => x !== tab).forEach((x) => closeTab(x, true))},
         {label: t('common.close'), icon: 'close', danger: true, fn: () => closeTab(tab)},
@@ -1278,7 +1304,7 @@ $('#btn-log').onclick = async () => {
     } catch (e) { toast(String(e), 'err'); }
     focusActive();
 };
-$('#btn-logdir').onclick = () => App.OpenLogFolder();
+$('#btn-logdir').onclick = () => logViewer();
 
 // ---------------------------------------------------------------- find in terminal
 
@@ -1352,6 +1378,8 @@ function toggleSidebar() {
 
 // Returns true when the key was handled (used by both the window and xterm).
 function handleGlobalKey(e) {
+    if (runBarKey(e)) return true;
+    if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyA') { e.preventDefault(); toggleAI(true); return true; }
     // Only Ctrl+Shift combos and keys shells don't use (Ctrl+B is tmux's prefix, Ctrl+F moves the cursor).
     if (!e.ctrlKey || e.altKey) return false;
     if (e.key === 'Tab') { e.preventDefault(); cycleTab(e.shiftKey ? -1 : 1); return true; }
@@ -1594,40 +1622,102 @@ EventsOn('sftp:progress', (p) => {
 async function loadMacros() {
     state.macros = await App.ListMacros() || [];
     renderMacros();
+    renderCmdBar();
 }
 
 function renderMacros() {
     $('#macro-list').innerHTML = state.macros.length ? state.macros.map((m) => `<div class="item" data-id="${m.id}" title="${esc(m.body)}">
-        <span class="ic">${icon('bolt')}</span><span class="nm">${esc(m.name)}</span>
+        <span class="ic">${icon('bolt')}</span><span class="nm">${esc(m.name)}</span>${m.bar ? `<span class="pin" title="${t('bar.onBar')}">${icon('pin')}</span>` : ''}
         <span class="sub">${t('macro.lines', {n: m.body.split('\n').filter(Boolean).length})}</span><button class="run" title="${t('common.run')}">${icon('play')}${t('common.run')}</button></div>`).join('')
         : `<div class="empty">${icon('bolt')}<span>${t('macro.empty')}</span><button id="macro-empty-add" class="primary">${icon('plus')}${t('macro.new')}</button></div>`;
     $('#macro-empty-add')?.addEventListener('click', () => editMacro(null));
 }
 
-function runMacro(m) {
-    const targets = state.multi ? multiTargets() : (state.active?.status === 'open' ? [state.active.id] : []);
+// {{name}} or {{name|default}} in a macro asks for a value before it runs.
+const VAR_RE = /\{\{\s*([^}|]+?)\s*(?:\|([^}]*))?\}\}/g;
+
+async function fillVars(m) {
+    const vars = [];
+    for (const [, name, def] of m.body.matchAll(VAR_RE)) if (!vars.some((v) => v.name === name)) vars.push({name, def: def ?? ''});
+    if (!vars.length) return m.body;
+    const saved = prefs.macroVars[m.id] || {};
+    const vals = await modal(t('macro.varsTitle', {name: m.name}), `<div class="f">
+        ${vars.map((v, i) => `<label>${esc(v.name)}</label><input data-var="${esc(v.name)}" value="${esc(saved[v.name] ?? v.def)}" ${i ? '' : 'autofocus'} spellcheck="false"/>`).join('')}
+        <pre class="full var-preview"></pre></div>`, {
+        okText: t('common.run'),
+        onMount: (r) => {
+            const preview = () => { r.querySelector('.var-preview').textContent = apply(read(r)); };
+            r.querySelectorAll('[data-var]').forEach((el) => el.addEventListener('input', preview));
+            preview();
+        },
+        onOk: (r) => read(r),
+    });
+    if (!vals) return null;
+    prefs.macroVars = {...prefs.macroVars, [m.id]: vals};
+    savePrefs();
+    return apply(vals);
+    function read(r) { return Object.fromEntries([...r.querySelectorAll('[data-var]')].map((el) => [el.dataset.var, el.value])); }
+    function apply(v) { return m.body.replace(VAR_RE, (_, name) => v[name.trim()] ?? ''); }
+}
+
+async function runMacro(m, allTabs = false) {
+    if (!m) return;
+    const targets = allTabs ? state.tabs.filter((x) => x.status === 'open').map((x) => x.id)
+        : state.multi ? multiTargets() : (state.active?.status === 'open' ? [state.active.id] : []);
     if (!targets.length) return toast(t('macro.noTarget'), 'err');
-    App.RunMacro(targets, m.body, m.delayMs || 0);
+    const body = await fillVars(m);
+    if (body == null) return focusActive();
+    if (m.confirm || (allTabs && targets.length > 1)) {
+        const names = state.tabs.filter((x) => targets.includes(x.id)).map((x) => esc(x.title)).join(', ');
+        const ok = await modal(t('macro.confirmTitle', {name: m.name}), `<p>${t('macro.confirmBody', {n: targets.length, names})}</p><pre>${esc(body)}</pre>`, {okText: t('common.run')});
+        if (!ok) return;
+    }
+    App.RunMacro(targets, body, m.delayMs || 0);
     toast(t('macro.ran', {name: m.name, n: targets.length}), 'ok');
     focusActive();
 }
 
 async function editMacro(m) {
-    m = {name: '', body: '', delayMs: 300, ...m};
+    m = {name: '', body: '', delayMs: 300, bar: true, confirm: false, ...m};
     const saved = await modal(m.id ? t('macro.edit') : t('macro.new'), `<div class="f">
         <label>${t('common.name')}</label><input name="name" value="${esc(m.name)}" autofocus placeholder="${t('macro.namePh')}"/>
         <label class="full">${t('macro.body')}</label>
-        <textarea class="full" name="body" rows="8" spellcheck="false" placeholder="show version&#10;show interface brief">${esc(m.body)}</textarea>
+        <textarea class="full" name="body" rows="8" spellcheck="false" placeholder="show version&#10;show interface {{${t('macro.varEx')}|Gi0/1}}">${esc(m.body)}</textarea>
+        <p class="full hint">${t('macro.varHint')}</p>
         <label>${t('macro.delay')}</label><div class="inline"><input name="delay" type="number" min="0" step="100" value="${m.delayMs}"/><span class="hint">ms</span></div>
+        <span></span><label class="chk"><input type="checkbox" name="bar" ${m.bar ? 'checked' : ''}/> ${t('macro.bar')}</label>
+        <span></span><label class="chk"><input type="checkbox" name="confirm" ${m.confirm ? 'checked' : ''}/> ${t('macro.confirm')}</label>
     </div>`, {
         okText: t('common.save'),
         onOk: async (r) => {
-            const out = {...m, name: r.querySelector('[name=name]').value.trim(), body: r.querySelector('[name=body]').value, delayMs: parseInt(r.querySelector('[name=delay]').value, 10) || 0};
+            const out = {...m, name: r.querySelector('[name=name]').value.trim(), body: r.querySelector('[name=body]').value, delayMs: parseInt(r.querySelector('[name=delay]').value, 10) || 0,
+                bar: r.querySelector('[name=bar]').checked, confirm: r.querySelector('[name=confirm]').checked};
             if (!out.name) { toast(t('macro.needName'), 'err'); return false; }
             return App.SaveMacro(out);
         },
     });
     if (saved) loadMacros();
+}
+
+async function toggleBar(m) {
+    await App.SaveMacro({...m, bar: !m.bar});
+    loadMacros();
+}
+
+function macroMenu(e, m) {
+    ctxMenu(e.clientX, e.clientY, [
+        {label: t('common.run'), icon: 'play', fn: () => runMacro(m)},
+        {label: t('bar.runAll'), icon: 'multi', fn: () => runMacro(m, true)},
+        {label: m.bar ? t('bar.unpin') : t('bar.pin'), icon: 'pin', fn: () => toggleBar(m)},
+        {label: t('common.edit'), icon: 'gear', fn: () => editMacro(m)},
+        '-',
+        {label: t('common.delete'), icon: 'close', danger: true, fn: async () => {
+            if (await modal(t('macro.deleteTitle'), `<p>${esc(t('macro.deleteBody', {name: m.name}))}</p>`, {okText: t('common.delete'), danger: true})) {
+                await App.DeleteMacro(m.id);
+                loadMacros();
+            }
+        }},
+    ]);
 }
 
 $('#macro-add').onclick = () => editMacro(null);
@@ -1642,20 +1732,67 @@ $('#macro-list').addEventListener('dblclick', (e) => {
 $('#macro-list').addEventListener('contextmenu', (e) => {
     e.preventDefault();
     const it = e.target.closest('.item');
-    if (!it) return;
-    const m = state.macros.find((x) => x.id === it.dataset.id);
-    ctxMenu(e.clientX, e.clientY, [
-        {label: t('common.run'), icon: 'play', fn: () => runMacro(m)},
-        {label: t('common.edit'), icon: 'gear', fn: () => editMacro(m)},
-        '-',
-        {label: t('common.delete'), icon: 'close', danger: true, fn: async () => {
-            if (await modal(t('macro.deleteTitle'), `<p>${esc(t('macro.deleteBody', {name: m.name}))}</p>`, {okText: t('common.delete'), danger: true})) {
-                await App.DeleteMacro(m.id);
-                loadMacros();
-            }
-        }},
-    ]);
+    if (it) macroMenu(e, state.macros.find((x) => x.id === it.dataset.id));
 });
+
+// ---- command bar: pinned macros as one-click buttons under the tabs (Alt+1..9).
+
+const barMacros = () => state.macros.filter((m) => m.bar);
+
+function renderCmdBar() {
+    const bar = $('#cmdbar');
+    const show = prefs.cmdBar && state.tabs.length > 0;
+    bar.classList.toggle('hidden', !show);
+    if (!show) return;
+    const items = barMacros();
+    bar.innerHTML = items.map((m, i) => `<button class="cmd" draggable="true" data-id="${m.id}" title="${esc(m.body)}${i < 9 ? `\n\nAlt+${i + 1} · ${t('bar.tipKeys')}` : ''}">`
+        + `${i < 9 ? `<kbd>${i + 1}</kbd>` : ''}${m.confirm ? icon('alert') : ''}<span>${esc(m.name)}</span></button>`).join('')
+        + `<button class="cmd add" data-x="add" title="${t('bar.add')}">${icon('plus')}${items.length ? '' : `<span>${t('bar.addFirst')}</span>`}</button>`;
+}
+
+$('#cmdbar').addEventListener('click', (e) => {
+    if (e.target.closest('[data-x=add]')) return editMacro({bar: true});
+    const b = e.target.closest('.cmd[data-id]');
+    if (b) runMacro(state.macros.find((m) => m.id === b.dataset.id), e.shiftKey);
+});
+$('#cmdbar').addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const b = e.target.closest('.cmd[data-id]');
+    if (b) macroMenu(e, state.macros.find((m) => m.id === b.dataset.id));
+    else ctxMenu(e.clientX, e.clientY, [{label: t('bar.add'), icon: 'plus', fn: () => editMacro({bar: true})}, {label: t('bar.hide'), fn: () => { prefs.cmdBar = false; savePrefs(); renderCmdBar(); toast(t('bar.hidden')); }}]);
+});
+let barDrag = null;
+$('#cmdbar').addEventListener('dragstart', (e) => { barDrag = e.target.closest('.cmd[data-id]')?.dataset.id; e.dataTransfer.effectAllowed = 'move'; });
+$('#cmdbar').addEventListener('dragover', (e) => {
+    if (!barDrag) return;
+    e.preventDefault();
+    $$('#cmdbar .cmd').forEach((x) => x.classList.remove('drop-before', 'drop-after'));
+    const el = e.target.closest('.cmd[data-id]');
+    if (el && el.dataset.id !== barDrag) el.classList.add(dropAfter(e, el) ? 'drop-after' : 'drop-before');
+});
+$('#cmdbar').addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const el = e.target.closest('.cmd[data-id]');
+    const from = barDrag;
+    barDrag = null;
+    if (!el || !from || el.dataset.id === from) return renderCmdBar();
+    const ids = state.macros.map((m) => m.id).filter((id) => id !== from);
+    ids.splice(ids.indexOf(el.dataset.id) + (dropAfter(e, el) ? 1 : 0), 0, from);
+    state.macros.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    renderMacros();
+    renderCmdBar();
+    await App.ReorderMacros(ids).catch((err) => toast(String(err), 'err'));
+});
+$('#cmdbar').addEventListener('dragend', () => { barDrag = null; renderCmdBar(); });
+
+function runBarKey(e) {
+    if (!e.altKey || e.ctrlKey || e.shiftKey || e.metaKey || !/^Digit[1-9]$/.test(e.code) || !prefs.cmdBar) return false;
+    const m = barMacros()[Number(e.code.slice(5)) - 1];
+    if (!m) return false;
+    e.preventDefault();
+    runMacro(m);
+    return true;
+}
 
 // ---------------------------------------------------------------- side panels
 
@@ -1686,7 +1823,8 @@ function schemePreview(name) {
 async function settingsDialog(before = null) {
     if ($('.modal-bg')) return;
     before = before ?? JSON.stringify(prefs); // kept across a language re-render so Cancel still reverts
-    const [closeToTray, autostart, updateCheck, version] = await Promise.all([App.GetCloseToTray(), App.GetAutostart(), App.GetUpdateCheck(), App.GetVersion()]).catch(() => [true, false, true, '']);
+    const [closeToTray, autostart, updateCheck, version, logSet, ai] = await Promise.all([App.GetCloseToTray(), App.GetAutostart(), App.GetUpdateCheck(), App.GetVersion(), App.GetLogSettings(), App.AIStatus()])
+        .catch(() => [true, false, true, '', {auto: false, stamps: true, dir: ''}, {cli: false, model: ''}]);
     if ($('.modal-bg')) return;
     const seg = (key, opts) => `<div class="seg" data-pref="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(prefs[key]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     const chk = (key, label) => `<span></span><label class="chk"><input type="checkbox" data-pref="${key}" ${prefs[key] ? 'checked' : ''}/> ${label}</label>`;
@@ -1709,6 +1847,16 @@ async function settingsDialog(before = null) {
         ${chk('rightClickPaste', t('set.rightClickPaste'))}
         ${chk('confirmMultiline', t('set.confirmMultiline'))}
         ${chk('confirmClose', t('set.confirmClose'))}
+        ${chk('cmdBar', t('set.cmdBar'))}
+        <h4>${t('log.sec')}</h4>
+        <span></span><label class="chk"><input type="checkbox" name="logAuto" ${logSet.auto ? 'checked' : ''}/> ${t('log.auto')}</label>
+        <span></span><label class="chk"><input type="checkbox" name="logStamps" ${logSet.stamps ? 'checked' : ''}/> ${t('log.stamps')}</label>
+        <label>${t('log.dir')}</label><div class="inline"><input name="logDir" value="${esc(logSet.dir)}" spellcheck="false"/><button type="button" data-x="log-pick">${t('common.browse')}</button><button type="button" class="icon" data-x="log-open" title="${t('log.openDir')}">${icon('folderOpen')}</button></div>
+        <p class="full hint">${t('log.dirHint')}</p>
+        <h4>${t('ai.sec')}</h4>
+        <label>Claude Code</label><span class="hint">${ai.cli ? `<b style="color:var(--ok)">${t('ai.cliFound')}</b> <span class="mono">${esc(ai.path)}</span>` : t('ai.cliMissing')}</span>
+        <label>${t('ai.model')}</label><select name="aiModel">${[['', t('ai.modelDefault')], ['sonnet', 'Sonnet'], ['opus', 'Opus'], ['haiku', t('ai.modelFast')]].map(([v, l]) => `<option value="${v}" ${ai.model === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        ${chk('aiChip', t('set.aiChip'))}
         <h4>${t('set.secWindow')}</h4>
         <span></span><label class="chk"><input type="checkbox" name="closeToTray" ${closeToTray ? 'checked' : ''}/> ${t('set.closeToTray')}</label>
         <span></span><label class="chk"><input type="checkbox" name="autostart" ${autostart ? 'checked' : ''}/> ${t('set.autostart')}</label>
@@ -1737,6 +1885,11 @@ async function settingsDialog(before = null) {
                 r.querySelector('#scheme-preview').innerHTML = schemePreview(prefs.termScheme);
             };
             r.querySelector('[data-x=hl-rules]').onclick = () => editHlRules();
+            r.querySelector('[data-x=log-pick]').onclick = async () => {
+                const d = await App.PickLogDir().catch(() => '');
+                if (d) r.querySelector('[name=logDir]').value = d;
+            };
+            r.querySelector('[data-x=log-open]').onclick = () => App.RevealLog('');
             r.querySelector('[data-x=upd-check]').onclick = () => checkUpdateNow();
             r.querySelector('[data-x=bk-export]').onclick = () => exportBackup();
             r.querySelector('[data-x=bk-restore]').onclick = () => restoreBackup();
@@ -1759,7 +1912,11 @@ async function settingsDialog(before = null) {
             const tray = r.querySelector('[name=closeToTray]').checked;
             const auto = r.querySelector('[name=autostart]').checked;
             const upd = r.querySelector('[name=updateCheck]').checked;
+            const logNew = {auto: r.querySelector('[name=logAuto]').checked, stamps: r.querySelector('[name=logStamps]').checked, dir: r.querySelector('[name=logDir]').value.trim()};
+            const model = r.querySelector('[name=aiModel]').value;
             try {
+                if (logNew.auto !== logSet.auto || logNew.stamps !== logSet.stamps || logNew.dir !== logSet.dir) await App.SetLogSettings(logNew);
+                if (model !== (ai.model || '')) await App.SetAIModel(model);
                 if (tray !== closeToTray) await App.SetCloseToTray(tray);
                 if (auto !== autostart) await App.SetAutostart(auto);
                 if (upd !== updateCheck) await App.SetUpdateCheck(upd);
@@ -1768,6 +1925,7 @@ async function settingsDialog(before = null) {
         },
     });
     if (ok) { savePrefs(); toast(t('set.saved'), 'ok'); }
+    renderCmdBar();
 }
 $('#btn-settings').onclick = () => settingsDialog();
 
@@ -2145,6 +2303,567 @@ EventsOn('app:closeAsk', async () => {
     });
     if (hide) App.HideWindow(true);
 });
+
+// ---------------------------------------------------------------- session logs
+
+const fmtDate = (ms) => {
+    const d = new Date(ms);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+// Log browser: sessions on the left, a log's text on the right; Enter in the
+// search box searches inside every log.
+async function logViewer({rel = '', session = ''} = {}) {
+    if ($('.modal-bg')) return;
+    let logs = await App.ListLogs().catch(() => []) || [];
+    let cur = rel || logs.find((l) => !session || l.session === session)?.rel || '';
+    let open = new Set([logs.find((l) => l.rel === cur)?.session || session].filter(Boolean));
+    let hits = null; // full-text results
+    let gotoLine = 0;
+    let rootEl;
+
+    const groups = () => {
+        const m = new Map();
+        for (const l of logs) {
+            if (!m.has(l.session)) m.set(l.session, []);
+            m.get(l.session).push(l);
+        }
+        return [...m.entries()];
+    };
+    const renderList = () => {
+        const q = rootEl.querySelector('[name=lq]').value.trim().toLowerCase();
+        const list = rootEl.querySelector('.lv-list');
+        if (hits) {
+            list.innerHTML = `<div class="lv-hits-head">${t('log.hits', {n: hits.length})}<button class="ghost" data-x="hits-clear">${icon('close')}</button></div>`
+                + (hits.map((h, i) => `<div class="item lv-hit" data-i="${i}"><span class="nm"><b>${esc(h.session)}</b> · ${fmtDate(h.time)} · ${t('log.line', {n: h.line})}</span><span class="sub mono">${esc(h.text)}</span></div>`).join('')
+                || `<div class="empty"><span>${t('log.noHits')}</span></div>`);
+            return;
+        }
+        const gs = groups().filter(([s]) => !q || s.toLowerCase().includes(q));
+        list.innerHTML = gs.map(([s, ls]) => `<div class="folder${open.has(s) || q ? ' open' : ''}" data-s="${esc(s)}"><span class="fic">${icon(open.has(s) || q ? 'chevDown' : 'chevRight')}</span><span class="nm">${esc(s)}</span><span class="sub">${ls.length}</span></div>`
+            + (open.has(s) || q ? ls.map((l) => `<div class="item lv-file${l.rel === cur ? ' sel' : ''}" data-rel="${esc(l.rel)}"><span class="nm">${fmtDate(l.time)}</span>${l.active ? '<span class="badge rec">REC</span>' : ''}${l.summary ? `<span class="pin" title="${t('ai.hasSummary')}">${icon('spark')}</span>` : ''}<span class="sub">${fmtSize(l.size)}</span></div>`).join('') : '')).join('')
+            || `<div class="empty">${icon('logs')}<span>${t(logs.length ? 'log.noMatch' : 'log.none')}</span></div>`;
+    };
+    const showFile = async () => {
+        const view = rootEl.querySelector('.lv-view');
+        const l = logs.find((x) => x.rel === cur);
+        if (!l) {
+            view.innerHTML = `<div class="empty"><span>${t('log.pick')}</span></div>`;
+            return;
+        }
+        view.innerHTML = `<div class="lv-bar"><b>${esc(l.session)}</b><span class="hint">${fmtDate(l.time)} · ${fmtSize(l.size)}</span>${l.active ? '<span class="badge rec">REC</span>' : ''}<span class="grow"></span>
+            <button data-x="sum">${icon('spark')}${t(l.summary ? 'ai.summaryShow' : 'ai.summary')}</button>
+            <button class="icon" data-x="reveal" title="${t('log.reveal')}">${icon('folderOpen')}</button>
+            <button class="icon" data-x="del" title="${t('common.delete')}" ${l.active ? 'disabled' : ''}>${icon('trash')}</button></div>
+            <div class="lv-text mono"><div class="loadbar"><i></i></div></div>`;
+        const res = await App.ReadLog(cur).catch((e) => ({text: String(e)}));
+        if (l.rel !== cur) return;
+        const box = view.querySelector('.lv-text');
+        const q = (hits && rootEl.querySelector('[name=lq]').value.trim()) || '';
+        const lines = res.text.split('\n');
+        box.innerHTML = (res.truncated ? `<div class="hint">${t('log.truncated')}</div>` : '')
+            + lines.map((ln, i) => `<div class="ln" data-n="${i + 1}">${q ? markText(ln, q) : esc(ln)}</div>`).join('');
+        if (gotoLine) {
+            const el = box.querySelector(`.ln[data-n="${gotoLine}"]`);
+            el?.classList.add('hit');
+            el?.scrollIntoView({block: 'center'});
+            gotoLine = 0;
+        } else box.scrollTop = box.scrollHeight;
+        view.querySelector('[data-x=sum]').onclick = () => (l.summary && res.summary
+            ? aiReport(t('ai.summaryOf', {name: l.session}), {text: res.summary, rel: l.rel})
+            : aiReport(t('ai.summaryOf', {name: l.session}), {start: (id) => App.AISummarizeLog(id, l.rel), rel: l.rel, onSaved: () => { l.summary = true; renderList(); }}));
+        view.querySelector('[data-x=reveal]').onclick = () => App.RevealLog(l.rel);
+        view.querySelector('[data-x=del]').onclick = async () => {
+            if (!await confirmInline(view, t('log.deleteAsk'))) return;
+            try {
+                await App.DeleteLog(l.rel);
+                logs = logs.filter((x) => x !== l);
+                cur = '';
+                renderList();
+                showFile();
+            } catch (e) { toast(String(e), 'err'); }
+        };
+    };
+
+    await modal(t('log.title'), `<div class="lv">
+        <div class="lv-side"><label class="field"><i data-icon="search"></i><input name="lq" placeholder="${t('log.searchPh')}" spellcheck="false"/></label><div class="lv-list list"></div></div>
+        <div class="lv-view"></div></div>`, {
+        wide: 'xl', noCancel: true, okText: t('common.close'),
+        onMount: (r) => {
+            rootEl = r;
+            hydrateIcons(r);
+            renderList();
+            showFile();
+            const input = r.querySelector('[name=lq]');
+            input.addEventListener('input', () => { if (!hits) renderList(); });
+            input.addEventListener('keydown', async (e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                e.stopPropagation();
+                const q = input.value.trim();
+                if (!q) { hits = null; return renderList(); }
+                r.querySelector('.lv-list').innerHTML = '<div class="loadbar"><i></i></div>';
+                hits = await App.SearchLogs(q).catch(() => []) || [];
+                renderList();
+            });
+            r.querySelector('.lv-list').addEventListener('click', (e) => {
+                if (e.target.closest('[data-x=hits-clear]')) { hits = null; input.value = ''; renderList(); return showFile(); }
+                const f = e.target.closest('.folder');
+                if (f) { const s = f.dataset.s; open.has(s) ? open.delete(s) : open.add(s); return renderList(); }
+                const h = e.target.closest('.lv-hit');
+                if (h) { const hit = hits[+h.dataset.i]; cur = hit.rel; gotoLine = hit.line; return showFile(); }
+                const it = e.target.closest('.lv-file');
+                if (it) { cur = it.dataset.rel; renderList(); showFile(); }
+            });
+        },
+    });
+}
+
+function markText(s, q) {
+    const lo = s.toLowerCase();
+    const k = q.toLowerCase();
+    let out = '';
+    let i = 0;
+    for (let j = lo.indexOf(k); j >= 0; j = lo.indexOf(k, i)) {
+        out += esc(s.slice(i, j)) + `<mark>${esc(s.slice(j, j + k.length))}</mark>`;
+        i = j + k.length;
+    }
+    return out + esc(s.slice(i));
+}
+
+// A small yes/no strip inside a dialog (no nested modal).
+function confirmInline(host, text) {
+    return new Promise((resolve) => {
+        host.querySelector('.inline-ask')?.remove();
+        const d = document.createElement('div');
+        d.className = 'inline-ask';
+        d.innerHTML = `<span>${esc(text)}</span><button data-v="0">${t('common.cancel')}</button><button class="primary" data-v="1" style="background:var(--bad);border-color:var(--bad)">${t('common.delete')}</button>`;
+        host.prepend(d);
+        d.onclick = (e) => {
+            const b = e.target.closest('button');
+            if (!b) return;
+            d.remove();
+            resolve(b.dataset.v === '1');
+        };
+        d.querySelector('[data-v="0"]').focus();
+    });
+}
+
+// ---------------------------------------------------------------- AI helper
+
+const AI_ERR = {
+    NO_CLI: 'ai.err.noCli', AI_AUTH: 'ai.err.auth', CANCELED: 'ai.err.canceled', timeout: 'ai.err.timeout',
+};
+const aiErrText = (e) => (AI_ERR[e] ? t(AI_ERR[e]) : t('ai.err.other', {e}));
+const newReqId = () => 'r' + Math.random().toString(36).slice(2, 10);
+
+// Visible terminal text: the last n lines up to the cursor, wrapped rows joined.
+function termText(tab, n = 120) {
+    const b = tab.term.buffer.active;
+    const end = b.baseY + b.cursorY;
+    const out = [];
+    for (let i = Math.max(0, end - n * 2); i <= end; i++) {
+        const l = b.getLine(i);
+        if (!l) continue;
+        const s = l.translateToString(true);
+        if (l.isWrapped && out.length) out[out.length - 1] += s; else out.push(s);
+    }
+    return out.slice(-n).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Stream an AI request; onDelta(textSoFar), resolves to {text, error}.
+function aiStream(start, onDelta) {
+    const id = newReqId();
+    let acc = '';
+    return {
+        id,
+        done: new Promise((resolve) => {
+            EventsOn('ai:delta:' + id, (d) => { acc += d; onDelta(acc); });
+            EventsOn('ai:done:' + id, (res) => {
+                EventsOff('ai:delta:' + id, 'ai:done:' + id);
+                resolve(res);
+            });
+            start(id);
+        }),
+    };
+}
+
+const mdLabels = () => ({insert: t('ai.insert'), insertTip: t('ai.insertTip'), run: t('common.run'), runTip: t('ai.runTip'), runAll: t('ai.runAll')});
+
+// Wire Insert/Run buttons in rendered answers to a tab.
+function wireCommands(root, getTab) {
+    root.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-act]');
+        if (!b) return;
+        const tab = getTab();
+        if (!tab || tab.status !== 'open') return toast(t('macro.noTarget'), 'err');
+        const block = b.closest('.cmd-block');
+        if (b.dataset.act === 'all') {
+            const cmds = [...block.querySelectorAll('.cmd-row')].map((r) => r.dataset.cmd);
+            App.RunMacro([tab.id], cmds.join('\n'), 400);
+        } else {
+            const cmd = b.closest('.cmd-row').dataset.cmd;
+            if (b.dataset.act === 'run' && RISKY_CMD.test(cmd)) return; // never one-click a config change
+            App.Write(tab.id, b.dataset.act === 'run' ? cmd + '\r' : cmd);
+        }
+        b.classList.add('done');
+        activate(tab);
+    });
+}
+
+function toggleAI(open = !prefs.aiOpen) {
+    prefs.aiOpen = open;
+    savePrefs();
+    renderAI();
+    if (open) requestAnimationFrame(() => $('#ai textarea').focus());
+    else focusActive();
+}
+
+function renderAI() {
+    const panel = $('#ai');
+    const show = prefs.aiOpen;
+    panel.classList.toggle('hidden', !show);
+    $('#btn-ai').classList.toggle('on', show);
+    if (!show) return;
+    panel.style.width = prefs.aiWidth + 'px';
+    const tab = state.active;
+    panel.querySelector('.ai-target').textContent = tab ? '· ' + tab.title : '';
+    const log = panel.querySelector('.ai-log');
+    if (!tab) {
+        log.innerHTML = `<div class="ai-empty">${t('ai.noTab')}</div>`;
+        return;
+    }
+    if (!tab.ai.msgs.length) {
+        log.innerHTML = `<div class="ai-empty">${icon('spark')}<p>${t('ai.intro')}</p>
+            ${['ai.ex1', 'ai.ex2', 'ai.ex3'].map((k) => `<button class="ai-ex" data-q="${esc(t(k))}">${esc(t(k))}</button>`).join('')}</div>`;
+    } else {
+        log.innerHTML = tab.ai.msgs.map((m, i) => `<div class="ai-msg ${m.role}${m.error ? ' err' : ''}" data-i="${i}">${m.role === 'user'
+            ? `${m.quote ? `<pre class="quote">${esc(m.quote)}</pre>` : ''}<div>${esc(m.text)}</div>`
+            : (m.text ? renderMD(m.text, {commands: true, labels: mdLabels()}) : '<div class="typing"><i></i><i></i><i></i></div>')}</div>`).join('');
+    }
+    panel.querySelector('[data-x=ai-send]').innerHTML = tab.ai.busy ? `${icon('stop')}<span>${t('ai.stop')}</span>` : `${icon('send')}<span>${t('ai.send')}</span>`;
+    log.scrollTop = log.scrollHeight;
+}
+
+async function askAI(tab, {question, kind = 'ask', quote = '', context = null}) {
+    if (tab.ai.busy) return;
+    const withScreen = $('#ai [name=ai-screen]').checked;
+    const history = tab.ai.msgs.filter((m) => !m.error).slice(-6).map((m) => ({role: m.role, text: (m.quote ? m.quote + '\n' : '') + m.text}));
+    tab.ai.msgs.push({role: 'user', text: question || t('ai.explainQ'), quote});
+    const ans = {role: 'assistant', text: ''};
+    tab.ai.msgs.push(ans);
+    const req = {
+        kind, question, history,
+        context: context ?? (withScreen ? termText(tab) : ''),
+        session: tab.title, target: targetOf(tab.session),
+    };
+    let raf = 0;
+    const s = aiStream((id) => App.AIAsk(id, req), (txt) => {
+        ans.text = txt;
+        if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (state.active === tab) renderAI(); });
+    });
+    tab.ai.busy = s.id;
+    renderAI();
+    const res = await s.done;
+    tab.ai.busy = null;
+    if (res.error && res.error !== 'CANCELED') { ans.text = aiErrText(res.error); ans.error = true; }
+    else ans.text = res.text || ans.text || t('ai.err.empty');
+    if (state.active === tab) renderAI();
+}
+
+(() => {
+    const panel = $('#ai');
+    const input = panel.querySelector('textarea');
+    const send = () => {
+        const tab = state.active;
+        if (!tab) return;
+        if (tab.ai.busy) return App.AICancel(tab.ai.busy);
+        const q = input.value.trim();
+        if (!q) return input.focus();
+        input.value = '';
+        askAI(tab, {question: q});
+    };
+    panel.querySelector('[data-x=ai-send]').onclick = send;
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+        if (e.key === 'Escape') { e.preventDefault(); focusActive(); }
+    });
+    panel.querySelector('[data-x=ai-close]').onclick = () => toggleAI(false);
+    panel.querySelector('[data-x=ai-new]').onclick = () => {
+        const tab = state.active;
+        if (!tab) return;
+        if (tab.ai.busy) App.AICancel(tab.ai.busy);
+        tab.ai = {msgs: [], busy: null};
+        renderAI();
+    };
+    panel.querySelector('.ai-log').addEventListener('click', (e) => {
+        const ex = e.target.closest('.ai-ex');
+        if (ex && state.active) askAI(state.active, {question: ex.dataset.q});
+    });
+    wireCommands(panel.querySelector('.ai-log'), () => state.active);
+    $('#btn-ai').onclick = () => toggleAI();
+    // Drag the panel's left edge to resize it.
+    panel.addEventListener('mousedown', (e) => {
+        if (e.offsetX > 5 || e.target !== panel) return;
+        e.preventDefault();
+        const move = (ev) => {
+            prefs.aiWidth = Math.max(280, Math.min(innerWidth * 0.6, innerWidth - ev.clientX)) / uiZoom();
+            panel.style.width = prefs.aiWidth + 'px';
+        };
+        const up = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', up); savePrefs(); };
+        addEventListener('mousemove', move);
+        addEventListener('mouseup', up);
+    });
+})();
+
+// "Ask AI" chip next to a terminal selection.
+let chipFor = null;
+function showAIChip(tab, x, y) {
+    const sel = tab.term.getSelection().trim();
+    if (!prefs.aiChip || sel.length < 3 || tab !== state.active) return hideAIChip();
+    const chip = $('#ai-chip');
+    chip.classList.remove('hidden');
+    const z = uiZoom();
+    const r = chip.getBoundingClientRect();
+    chip.style.left = Math.min(x + 8, innerWidth - r.width - 8) / z + 'px';
+    chip.style.top = Math.max(4, y - r.height - 10) / z + 'px';
+    chipFor = {tab, sel};
+}
+function hideAIChip() {
+    $('#ai-chip').classList.add('hidden');
+    chipFor = null;
+}
+$('#ai-chip').addEventListener('mousedown', (e) => e.preventDefault()); // keep the selection
+$('#ai-chip').onclick = () => {
+    if (!chipFor) return;
+    const {tab, sel} = chipFor;
+    hideAIChip();
+    if (!prefs.aiOpen) toggleAI(true);
+    const quote = sel.length > 4000 ? sel.slice(0, 4000) + '\n…' : sel;
+    askAI(tab, {kind: 'explain', question: '', quote, context: sel.slice(0, 20000)});
+};
+addEventListener('keydown', () => hideAIChip(), true);
+
+// Streaming report dialog (log summaries).
+async function aiReport(title, {start = null, text = '', rel = '', onSaved = null}) {
+    let body;
+    let req = null;
+    let final = text;
+    const draw = (md) => { body.innerHTML = md ? renderMD(md) : '<div class="typing"><i></i><i></i><i></i></div>'; };
+    await modal(title, `<div class="ai-report"><div class="ai-report-body md"></div></div>
+        <div class="inline ai-report-btns"><button type="button" data-x="copy">${icon('copy')}${t('ai.copy')}</button>
+        ${rel && text ? `<button type="button" data-x="redo">${icon('refresh')}${t('ai.redo')}</button>` : ''}<span class="hint grow" data-el="note"></span></div>`, {
+        wide: true, noCancel: true, okText: t('common.close'),
+        onMount: (r) => {
+            body = r.querySelector('.ai-report-body');
+            const note = r.querySelector('[data-el=note]');
+            r.querySelector('[data-x=copy]').onclick = () => { ClipboardSetText(final); toast(t('ai.copied'), 'ok'); };
+            const run = async (fn) => {
+                draw('');
+                note.textContent = t('ai.working');
+                req = aiStream(fn, (txt) => { final = txt; draw(txt); });
+                const res = await req.done;
+                req = null;
+                if (res.error) { final = ''; body.innerHTML = `<p class="err">${esc(aiErrText(res.error))}</p>`; note.textContent = ''; return; }
+                final = res.text || final;
+                draw(final);
+                note.textContent = rel ? t('ai.saved') : '';
+                onSaved?.();
+            };
+            r.querySelector('[data-x=redo]')?.addEventListener('click', () => run((id) => App.AISummarizeLog(id, rel)));
+            if (start) run(start); else draw(text);
+        },
+    });
+    if (req) App.AICancel(req.id);
+}
+
+async function summarizeTab(tab) {
+    const rel = tab.status === 'open' ? await App.LogPath(tab.id).catch(() => '') : '';
+    if (rel) return aiReport(t('ai.summaryOf', {name: tab.title}), {start: (id) => App.AISummarizeLog(id, rel), rel});
+    const text = termText(tab, Math.min(prefs.scrollback, 5000));
+    return aiReport(t('ai.summaryOf', {name: tab.title}), {start: (id) => App.AISummarizeText(id, tab.title, text)});
+}
+
+// ---------------------------------------------------------------- scheduled checks
+
+let checksOpen = null; // re-render hook while the dialog is open
+
+function scheduleText(c) {
+    if (c.mode === 'daily') return t('chk.daily', {t: c.times});
+    if (c.mode === 'interval') return t('chk.every', {n: c.everyMin});
+    return t('chk.manual');
+}
+
+function setChecksBadge(status) {
+    const b = $('#btn-checks');
+    b.classList.toggle('alert', status === 'warn' || status === 'fail');
+    b.classList.toggle('bad', status === 'fail');
+}
+
+EventsOn('check:state', () => checksOpen?.());
+EventsOn('check:done', (ev) => {
+    checksOpen?.();
+    const kind = ev.status === 'ok' ? 'ok' : 'err';
+    toast(t('chk.done.' + ev.status, {name: ev.name}) + (ev.note ? ' · ' + ev.note : ''), kind);
+    if (ev.status !== 'ok' && !checksOpen) setChecksBadge(ev.status);
+});
+
+async function checksDialog() {
+    if ($('.modal-bg')) return;
+    setChecksBadge('');
+    let list = [];
+    let rootEl;
+    const draw = async () => {
+        list = await App.ListChecks().catch(() => []) || [];
+        if (!rootEl?.isConnected) return;
+        rootEl.querySelector('.chk-list').innerHTML = list.length ? list.map((c) => `<div class="item chk-item" data-id="${c.id}">
+            <span class="dot ${c.running ? 'connecting' : c.lastStatus || 'none'}"></span>
+            <span class="nm"><b>${esc(c.name)}</b><span class="sub">${esc(scheduleText(c))} · ${t('chk.nDevices', {n: c.sessions.length})}${c.ai ? ' · AI' : ''}${c.enabled ? '' : ' · ' + t('chk.off')}</span>
+            <span class="sub">${c.running ? t('chk.running') : c.lastRun ? t('chk.last', {ago: ago(c.lastRun)}) + (c.lastNote ? ' · ' + esc(c.lastNote) : '') : t('chk.never')}${c.next && !c.running ? ' · ' + t('chk.next', {at: fmtDate(c.next)}) : ''}</span></span>
+            <button data-x="run" ${c.running ? 'disabled' : ''}>${icon('play')}${t('common.run')}</button>
+            <button data-x="runs">${t('chk.results')}</button></div>`).join('')
+            : `<div class="empty">${icon('clock')}<span>${t('chk.empty')}</span></div>`;
+    };
+    checksOpen = draw;
+    await modal(t('chk.title'), `<p class="hint">${t('chk.hint')}</p>
+        <div class="chk-list list"></div>
+        <div class="inline"><button type="button" class="primary" data-x="new">${icon('plus')}${t('chk.new')}</button></div>`, {
+        wide: true, noCancel: true, okText: t('common.close'),
+        onMount: (r) => {
+            rootEl = r;
+            draw();
+            r.querySelector('[data-x=new]').onclick = () => editCheck(null).then(draw);
+            const listEl = r.querySelector('.chk-list');
+            const find = (e) => list.find((c) => c.id === e.target.closest('.chk-item')?.dataset.id);
+            listEl.addEventListener('click', async (e) => {
+                const c = find(e);
+                if (!c) return;
+                if (e.target.closest('[data-x=run]')) {
+                    await App.RunCheckNow(c.id).catch((err) => toast(String(err), 'err'));
+                    return draw();
+                }
+                if (e.target.closest('[data-x=runs]')) return checkRuns(c);
+            });
+            listEl.addEventListener('dblclick', (e) => { const c = find(e); if (c && !e.target.closest('button')) editCheck(c).then(draw); });
+            listEl.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const c = find(e);
+                if (!c) return;
+                ctxMenu(e.clientX, e.clientY, [
+                    {label: t('common.run'), icon: 'play', fn: () => App.RunCheckNow(c.id).then(draw).catch((err) => toast(String(err), 'err'))},
+                    {label: t('chk.results'), icon: 'logs', fn: () => checkRuns(c)},
+                    {label: t('common.edit'), icon: 'gear', fn: () => editCheck(c).then(draw)},
+                    '-',
+                    {label: t('common.delete'), icon: 'close', danger: true, fn: async () => {
+                        if (await confirmInline(r, t('chk.deleteAsk', {name: c.name}))) { await App.DeleteCheck(c.id); draw(); }
+                    }},
+                ]);
+            });
+        },
+    });
+    checksOpen = null;
+}
+
+// Editing happens in a panel that replaces the list (dialogs don't nest).
+function editCheck(c) {
+    return new Promise((resolve) => {
+        const host = $('.modal-bg .modal');
+        c = {name: '', sessions: [], commands: '', mode: 'daily', times: '08:30', everyMin: 60, enabled: true, ai: true, ...c};
+        const sessions = state.sessions;
+        const panel = document.createElement('div');
+        panel.className = 'chk-edit';
+        panel.innerHTML = `<h3>${c.id ? t('chk.edit') : t('chk.new')}</h3><div class="f">
+            <label>${t('common.name')}</label><input name="name" value="${esc(c.name)}" placeholder="${t('chk.namePh')}" autofocus/>
+            <label>${t('chk.sessions')}</label><div class="chk-sess"><label class="field"><i data-icon="search"></i><input name="sq" placeholder="${t('sess.search')}" spellcheck="false"/></label>
+                <div class="chk-sess-list">${sessions.map((s) => `<label class="chk" data-name="${esc((s.folder ? s.folder + '/' : '') + s.name).toLowerCase()}"><input type="checkbox" value="${s.id}" ${c.sessions.includes(s.id) ? 'checked' : ''}/> ${s.folder ? `<span class="hint">${esc(s.folder)}/</span>` : ''}${esc(s.name)}${s.hasPassword || s.keyPath || s.kind !== 'ssh' ? '' : ` <span class="warn-txt">${t('chk.noPw')}</span>`}</label>`).join('') || `<span class="hint">${t('chk.noSessions')}</span>`}</div></div>
+            <label class="full">${t('chk.commands')}</label>
+            <textarea class="full" name="commands" rows="5" spellcheck="false" placeholder="show interface status&#10;show ip route summary">${esc(c.commands)}</textarea>
+            <p class="full hint">${t('chk.cmdHint')}</p>
+            <label>${t('chk.when')}</label><div class="inline"><div class="seg" data-seg="mode">${['daily', 'interval', 'manual'].map((m) => `<button type="button" data-v="${m}">${t('chk.mode.' + m)}</button>`).join('')}</div>
+                <input name="times" class="m-daily" value="${esc(c.times)}" placeholder="08:30, 18:00" style="width:140px"/>
+                <span class="m-interval inline"><input name="every" type="number" min="5" step="5" value="${c.everyMin}" style="width:80px"/><span class="hint">${t('chk.minutes')}</span></span></div>
+            <span></span><label class="chk"><input type="checkbox" name="ai" ${c.ai ? 'checked' : ''}/> ${t('chk.ai')}</label>
+            <span></span><label class="chk"><input type="checkbox" name="enabled" ${c.enabled ? 'checked' : ''}/> ${t('chk.enabled')}</label>
+        </div><div class="btns"><button data-x="back">${t('common.cancel')}</button><button class="primary" data-x="save">${t('common.save')}</button></div>`;
+        hydrateIcons(panel);
+        host.appendChild(panel);
+        host.classList.add('editing');
+        let mode = c.mode;
+        const sync = () => {
+            panel.querySelectorAll('[data-seg=mode] button').forEach((b) => b.classList.toggle('on', b.dataset.v === mode));
+            panel.querySelector('.m-daily').classList.toggle('hidden', mode !== 'daily');
+            panel.querySelector('.m-interval').classList.toggle('hidden', mode !== 'interval');
+        };
+        panel.querySelectorAll('[data-seg=mode] button').forEach((b) => { b.onclick = () => { mode = b.dataset.v; sync(); }; });
+        sync();
+        panel.querySelector('[name=sq]').addEventListener('input', (e) => {
+            const q = e.target.value.trim().toLowerCase();
+            panel.querySelectorAll('.chk-sess-list > label').forEach((l) => l.classList.toggle('hidden', !!q && !l.dataset.name.includes(q)));
+        });
+        const done = (v) => { panel.remove(); host.classList.remove('editing'); resolve(v); };
+        // Esc/Enter belong to this panel while it's open.
+        panel.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null); }
+            if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.stopPropagation();
+        });
+        panel.querySelector('[data-x=back]').onclick = () => done(null);
+        panel.querySelector('[data-x=save]').onclick = async () => {
+            const out = {...c,
+                name: panel.querySelector('[name=name]').value.trim(),
+                sessions: [...panel.querySelectorAll('.chk-sess-list input:checked')].map((x) => x.value),
+                commands: panel.querySelector('[name=commands]').value,
+                mode, times: panel.querySelector('[name=times]').value.trim(), everyMin: parseInt(panel.querySelector('[name=every]').value, 10) || 60,
+                ai: panel.querySelector('[name=ai]').checked, enabled: panel.querySelector('[name=enabled]').checked};
+            const risky = out.commands.split('\n').find((l) => l.trim() && RISKY_CMD.test(l));
+            if (risky) return toast(t('chk.riskyCmd', {cmd: risky.trim()}), 'err');
+            try { done(await App.SaveCheck(out)); } catch (e) { toast(String(e), 'err'); }
+        };
+        setTimeout(() => panel.querySelector('[name=name]').focus(), 0);
+    });
+}
+
+async function checkRuns(c) {
+    const host = $('.modal-bg .modal');
+    const runs = await App.CheckRuns(c.id).catch(() => []) || [];
+    const panel = document.createElement('div');
+    panel.className = 'chk-edit chk-runs';
+    panel.innerHTML = `<h3>${esc(c.name)} · ${t('chk.results')}</h3>
+        <div class="lv"><div class="lv-side"><div class="list">${runs.map((r, i) => `<div class="item run-item${i ? '' : ' sel'}" data-rel="${esc(r.rel)}"><span class="dot ${r.status || 'none'}"></span><span class="nm">${fmtDate(r.time)}</span></div>`).join('') || `<div class="empty"><span>${t('chk.noRuns')}</span></div>`}</div></div>
+        <div class="lv-view"><div class="run-tabs"></div><div class="run-body"></div></div></div>
+        <div class="btns"><button data-x="reveal">${icon('folderOpen')}${t('log.reveal')}</button><span class="grow"></span><button class="primary" data-x="back">${t('common.close')}</button></div>`;
+    host.appendChild(panel);
+    host.classList.add('editing');
+    let cur = runs[0]?.rel;
+    const show = async () => {
+        if (!cur) return;
+        const v = await App.ReadCheckRun(cur).catch((e) => ({report: String(e), files: []}));
+        const tabs = panel.querySelector('.run-tabs');
+        tabs.innerHTML = `<button class="on" data-f="-1">${t('chk.report')}</button>` + (v.files || []).map((f, i) => `<button data-f="${i}">${esc(f.name)}</button>`).join('');
+        const body = panel.querySelector('.run-body');
+        const pick = (i) => {
+            tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.f === String(i)));
+            body.innerHTML = i < 0 ? `<div class="md">${renderMD(v.report)}</div>` : `<pre class="mono">${esc(v.files[i].text)}</pre>`;
+        };
+        tabs.onclick = (e) => { const b = e.target.closest('button'); if (b) pick(+b.dataset.f); };
+        pick(-1);
+    };
+    panel.querySelector('.list').addEventListener('click', (e) => {
+        const it = e.target.closest('.run-item');
+        if (!it) return;
+        panel.querySelectorAll('.run-item').forEach((x) => x.classList.toggle('sel', x === it));
+        cur = it.dataset.rel;
+        show();
+    });
+    const close = () => { panel.remove(); host.classList.remove('editing'); };
+    panel.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } });
+    panel.querySelector('[data-x=back]').onclick = close;
+    panel.querySelector('[data-x=reveal]').onclick = () => (cur ? App.RevealLog(cur + '/report.md') : App.RevealLog(''));
+    panel.querySelector('[data-x=back]').focus();
+    show();
+}
+
+$('#btn-checks').onclick = () => checksDialog();
 
 // ---------------------------------------------------------------- boot
 

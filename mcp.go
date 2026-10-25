@@ -257,8 +257,10 @@ func (a *App) newMCPServer() *mcp.Server {
 			defer a.mu.Unlock()
 			var b strings.Builder
 			ids := make([]string, 0, len(a.conns))
-			for id := range a.conns {
-				ids = append(ids, id)
+			for id, lc := range a.conns {
+				if !lc.hidden {
+					ids = append(ids, id)
+				}
 			}
 			sort.Strings(ids)
 			for _, id := range ids {
@@ -502,7 +504,7 @@ func (a *App) tabForSession(sessionID string) *liveConn {
 	}
 	var best *liveConn
 	for _, lc := range a.conns {
-		if lc.sessionID == sessionID && (best == nil || lc.id < best.id) {
+		if !lc.hidden && lc.sessionID == sessionID && (best == nil || lc.id < best.id) {
 			best = lc
 		}
 	}
@@ -524,7 +526,7 @@ func (a *App) resolveTab(q string) (*liveConn, error) {
 	}
 	var hits []*liveConn
 	for _, lc := range a.conns {
-		if strings.EqualFold(lc.name, q) {
+		if !lc.hidden && strings.EqualFold(lc.name, q) {
 			hits = append(hits, lc)
 		}
 	}
@@ -719,8 +721,10 @@ func (a *App) runOnTabs(ctx context.Context, in multiIn) (*mcp.CallToolResult, a
 		if strings.EqualFold(strings.TrimSpace(q), "all") {
 			a.mu.Lock()
 			ids := make([]string, 0, len(a.conns))
-			for id := range a.conns {
-				ids = append(ids, id)
+			for id, lc := range a.conns {
+				if !lc.hidden {
+					ids = append(ids, id)
+				}
 			}
 			a.mu.Unlock()
 			sort.Strings(ids)
