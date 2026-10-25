@@ -1,11 +1,11 @@
 {
-    "version": "0.8.1",
+    "version": "0.9.0",
     "description": "Lightweight SSH, SFTP and serial terminal for Windows with a built-in MCP server",
     "homepage": "https://github.com/minhyeok2487/Hopline",
     "license": "MIT",
     "notes": "Hopline needs the Microsoft Edge WebView2 runtime (built into Windows 11).",
-    "url": "https://github.com/minhyeok2487/Hopline/releases/download/v0.8.1/Hopline-0.8.1.exe#/Hopline.exe",
-    "hash": "4cf0a2ecee396f4484eaacfaab298fe12ba3f19069e2759dad8cf1abdb6fd190",
+    "url": "https://github.com/minhyeok2487/Hopline/releases/download/v0.9.0/Hopline-0.9.0.exe#/Hopline.exe",
+    "hash": "3f3c52179d7a1cba7f24ebf6653a0536ac612049e50384f7b320341591acd220",
     "bin": "Hopline.exe",
     "shortcuts": [
         [

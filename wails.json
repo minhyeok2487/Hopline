@@ -13,7 +13,7 @@
   "info": {
     "companyName": "minhyeok2487",
     "productName": "Hopline",
-    "productVersion": "0.8.1",
+    "productVersion": "0.9.0",
     "copyright": "Copyright (c) 2026 minhyeok2487 (MIT License)",
     "comments": "Lightweight SSH, SFTP and serial terminal with an MCP server"
   }
