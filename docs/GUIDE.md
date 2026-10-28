@@ -23,8 +23,8 @@ This guide walks through everyday use of Hopline: installing it, saving sessions
 
 ## Install
 
-1. Download `Hopline-<version>.exe` (for example `Hopline-0.6.0.exe`) from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest). You can rename it to `Hopline.exe`; settings don't depend on the file name.
-2. Put it anywhere (for example `C:\Tools\Hopline\`) and run it. There is no installer.
+1. Download `Hopline-<version>.zip` (for example `Hopline-0.9.1.zip`) from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest) and unzip it into any folder. It holds a single `Hopline.exe`; settings don't depend on the file name or folder. If your network allows `.exe` downloads you can take `Hopline-<version>.exe` instead.
+2. Keep the folder anywhere (for example `C:\Tools\Hopline\`) and run `Hopline.exe`. There is no installer.
 3. The executable is not code-signed yet, so Windows SmartScreen may say *"Windows protected your PC"*. Click **More info → Run anyway**. You can compare the file's SHA-256 with the value on the release page first.
 
 Hopline needs the Microsoft Edge WebView2 runtime. It is built into Windows 11 and most up-to-date Windows 10 installs; if the app does not start, install the [WebView2 Evergreen runtime](https://developer.microsoft.com/microsoft-edge/webview2/).

@@ -92,7 +92,7 @@ Hopline은 로컬 [MCP(Model Context Protocol)](https://modelcontextprotocol.io)
 
 ## 다운로드
 
-[최신 릴리스](https://github.com/minhyeok2487/Hopline/releases/latest)에서 `Hopline-<버전>.exe`(예: `Hopline-0.6.0.exe`)를 받아 바로 실행하면 됩니다. 설치 과정은 없습니다. Windows 10/11에서 WebView2 런타임(Windows 11 기본 포함)으로 동작합니다.
+[최신 릴리스](https://github.com/minhyeok2487/Hopline/releases/latest)에서 `Hopline-<버전>.zip`(예: `Hopline-0.9.1.zip`)을 받아 원하는 폴더에 압축을 풀고 `Hopline.exe`를 실행하면 됩니다. 설치 과정은 없습니다. 회사 보안으로 `.exe` 다운로드가 막히는 경우를 위해 zip으로 배포하며, `.exe`도 함께 올립니다(이전 버전의 자동 업데이트용). Windows 10/11에서 WebView2 런타임(Windows 11 기본 포함)으로 동작합니다.
 
 아직 코드 서명이 없어서 처음 실행할 때 SmartScreen 경고가 뜰 수 있습니다. **추가 정보 → 실행**을 누르세요. 릴리스 노트에 SHA-256 값이 있어 받은 파일을 확인할 수 있습니다.
 

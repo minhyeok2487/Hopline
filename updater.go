@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -24,7 +25,7 @@ import (
 
 // appVersion is bumped with every release (and can be overridden with
 // -ldflags "-X main.appVersion=..." for testing the updater).
-var appVersion = "0.9.0"
+var appVersion = "0.9.1"
 
 const releasesAPI = "https://api.github.com/repos/minhyeok2487/Hopline/releases/latest"
 
@@ -34,15 +35,18 @@ type UpdateInfo struct {
 	Current   string `json:"current"`
 	Latest    string `json:"latest"`
 	Page      string `json:"page"`              // release page
-	Size      int64  `json:"size"`              // bytes of the executable
+	Size      int64  `json:"size"`              // bytes of the download
 	Notes     string `json:"notes"`             // release notes (markdown)
 	Managed   string `json:"managed,omitempty"` // "scoop" when Scoop owns the install
 
 	url    string
 	sha256 string
+	zipped bool // the asset is a .zip holding Hopline.exe
 }
 
-var assetRe = regexp.MustCompile(`(?i)^Hopline(-[\w.]+)?\.exe$`)
+// Releases ship Hopline-<version>.zip (preferred: some networks block .exe
+// downloads) and, for older updaters, Hopline-<version>.exe.
+var assetRe = regexp.MustCompile(`(?i)^Hopline(-[\w.]+)?\.(exe|zip)$`)
 var hashRe = regexp.MustCompile(`\b[0-9a-f]{64}\b`)
 
 // newer reports whether version a (like "v1.2.3") is higher than b.
@@ -104,12 +108,15 @@ func (a *App) CheckUpdate() (UpdateInfo, error) {
 	info.Page = rel.Page
 	info.Notes = rel.Body
 	for _, as := range rel.Assets {
-		if assetRe.MatchString(as.Name) {
-			info.url, info.Size = as.URL, as.Size
-			info.sha256 = strings.TrimPrefix(as.Digest, "sha256:")
-			if info.sha256 == "" { // older releases: the hash is in the notes
-				info.sha256 = hashRe.FindString(rel.Body)
-			}
+		m := assetRe.FindStringSubmatch(as.Name)
+		if m == nil || (info.zipped && !strings.EqualFold(m[2], "zip")) {
+			continue
+		}
+		info.url, info.Size = as.URL, as.Size
+		info.zipped = strings.EqualFold(m[2], "zip")
+		info.sha256 = strings.TrimPrefix(as.Digest, "sha256:")
+		if info.sha256 == "" && !info.zipped { // older releases: the exe's hash is in the notes
+			info.sha256 = hashRe.FindString(rel.Body)
 		}
 	}
 	info.Available = info.url != "" && newer(info.Latest, appVersion)
@@ -168,7 +175,7 @@ func (p *progressWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// ApplyUpdate downloads the latest executable, checks its SHA-256, swaps it in
+// ApplyUpdate downloads the latest release, checks its SHA-256, swaps it in
 // place of the running one and restarts Hopline. Errors starting with an
 // upper-case code (SCOOP, NOT_WRITABLE) tell the UI to offer another way.
 func (a *App) ApplyUpdate() error {
@@ -221,6 +228,11 @@ func (a *App) ApplyUpdate() error {
 	if got := hex.EncodeToString(h.Sum(nil)); !strings.EqualFold(got, info.sha256) {
 		return fmt.Errorf("checksum mismatch (got %s, expected %s)", got, info.sha256)
 	}
+	if info.zipped {
+		if err := unzipExe(tmp); err != nil {
+			return fmt.Errorf("unpack update: %w", err)
+		}
+	}
 	// A running .exe can't be overwritten on Windows, but it can be renamed.
 	old := exe + ".old"
 	_ = os.Remove(old)
@@ -249,6 +261,47 @@ func (a *App) ApplyUpdate() error {
 		runtime.Quit(a.ctx)
 	}()
 	return nil
+}
+
+// unzipExe replaces the downloaded zip at path with the Hopline .exe inside it.
+func unzipExe(path string) error {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return err
+	}
+	var exe *zip.File
+	for _, f := range zr.File {
+		if strings.EqualFold(filepath.Ext(f.Name), ".exe") {
+			exe = f
+			break
+		}
+	}
+	if exe == nil {
+		zr.Close()
+		return errors.New("no .exe in the archive")
+	}
+	rc, err := exe.Open()
+	if err != nil {
+		zr.Close()
+		return err
+	}
+	out := path + ".exe"
+	f, err := os.Create(out)
+	if err == nil {
+		_, err = io.Copy(f, io.LimitReader(rc, 512<<20))
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+	}
+	rc.Close()
+	zr.Close()
+	if err == nil {
+		err = os.Rename(out, path)
+	}
+	if err != nil {
+		_ = os.Remove(out)
+	}
+	return err
 }
 
 // updatedFrom handles "--updated-from=PID" before the app starts: wait for the

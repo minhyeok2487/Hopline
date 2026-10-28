@@ -66,7 +66,7 @@ const en = {
   install: {
     title: "Install in a minute",
     steps: [
-      { title: "Download", body: "Get Hopline-<version>.exe from the latest release and put it anywhere. There is no installer." },
+      { title: "Download", body: "Get Hopline-<version>.zip from the latest release, unzip it anywhere and run Hopline.exe. There is no installer." },
       { title: "Run it", body: "The executable isn't code-signed yet: if SmartScreen warns, choose More info, then Run anyway." },
       { title: "Connect Claude (optional)", body: "Click MCP, then Connect to Claude Code. Open a new Claude Code session and ask away." },
     ],
@@ -160,7 +160,7 @@ const ko: Dict = {
   install: {
     title: "1분이면 설치 끝",
     steps: [
-      { title: "다운로드", body: "최신 릴리스에서 Hopline-<버전>.exe를 받아 아무 폴더에나 두세요. 설치 과정이 없습니다." },
+      { title: "다운로드", body: "최신 릴리스에서 Hopline-<버전>.zip을 받아 아무 폴더에나 압축을 풀고 Hopline.exe를 실행하세요. 설치 과정이 없습니다." },
       { title: "실행", body: "아직 코드 서명이 없어 SmartScreen 경고가 뜰 수 있습니다. 추가 정보 → 실행을 누르세요." },
       { title: "Claude 연결 (선택)", body: "MCP 버튼 → Claude Code에 연결을 누르고, Claude Code에서 새 세션을 열어 요청하세요." },
     ],

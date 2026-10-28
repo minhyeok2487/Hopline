@@ -24,12 +24,17 @@ export async function getLatestRelease(): Promise<Release> {
     });
     if (!res.ok) return fallback;
     const rel = await res.json();
-    // Assets are named Hopline-<version>.exe (older releases: Hopline.exe).
-    const exe = (rel.assets ?? []).find((a: { name: string }) => /^Hopline(-[\w.]+)?\.exe$/i.test(a.name));
+    // Prefer Hopline-<version>.zip (many networks block .exe downloads);
+    // older releases only have Hopline-<version>.exe or Hopline.exe.
+    type Asset = { name: string; size: number; browser_download_url: string };
+    const assets: Asset[] = rel.assets ?? [];
+    const pick =
+      assets.find((a) => /^Hopline(-[\w.]+)?\.zip$/i.test(a.name)) ??
+      assets.find((a) => /^Hopline(-[\w.]+)?\.exe$/i.test(a.name));
     return {
       version: rel.tag_name ?? "",
-      downloadUrl: exe?.browser_download_url ?? fallback.downloadUrl,
-      sizeMB: exe ? `${(exe.size / 1024 / 1024).toFixed(1)} MB` : fallback.sizeMB,
+      downloadUrl: pick?.browser_download_url ?? fallback.downloadUrl,
+      sizeMB: pick ? `${(pick.size / 1024 / 1024).toFixed(1)} MB` : fallback.sizeMB,
       publishedAt: rel.published_at ?? "",
     };
   } catch {
