@@ -848,7 +848,7 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
 
     const tab = {
         id, session: s, adhoc, title: s.name, kind: s.kind, term, fit, search, pane,
-        status: 'connecting', logging: false, multi: true, mcpPending: viaMcp, bot: false, ai: {msgs: [], busy: null},
+        status: 'connecting', logging: false, multi: true, mcpPending: viaMcp, bot: false, ai: newAIConversation(),
         hl: new Highlighter(term, () => hlCompiled, () => resolveScheme(prefs.termScheme, isDark())),
     };
     state.tabs.push(tab);
@@ -2514,6 +2514,11 @@ function wireCommands(root, getTab) {
 
 let hasClaudeDesktop = false;
 
+// One Claude Code session per tab conversation ("New conversation" starts another).
+function newAIConversation() {
+    return {msgs: [], busy: null, conv: crypto.randomUUID(), started: false, session: ''};
+}
+
 function toggleAI(open = !prefs.aiOpen) {
     prefs.aiOpen = open;
     savePrefs();
@@ -2552,7 +2557,9 @@ function renderAI() {
 async function askAI(tab, {question, kind = 'ask', quote = '', context = null}) {
     if (tab.ai.busy) return;
     const withScreen = $('#ai [name=ai-screen]').checked;
-    const history = tab.ai.msgs.filter((m) => !m.error).slice(-6).map((m) => ({role: m.role, text: (m.quote ? m.quote + '\n' : '') + m.text}));
+    // Once the conversation's CLI session has an answer, Claude keeps the history itself.
+    const resume = tab.ai.started;
+    const history = resume ? [] : tab.ai.msgs.filter((m) => !m.error).slice(-6).map((m) => ({role: m.role, text: (m.quote ? m.quote + '\n' : '') + m.text}));
     tab.ai.msgs.push({role: 'user', text: question || t('ai.explainQ'), quote});
     const ans = {role: 'assistant', text: ''};
     tab.ai.msgs.push(ans);
@@ -2560,6 +2567,7 @@ async function askAI(tab, {question, kind = 'ask', quote = '', context = null}) 
         kind, question, history,
         context: context ?? (withScreen ? termText(tab) : ''),
         session: tab.title, target: targetOf(tab.session),
+        conversation: tab.ai.conv, resume,
     };
     let raf = 0;
     const s = aiStream((id) => App.AIAsk(id, req), (txt) => {
@@ -2570,7 +2578,7 @@ async function askAI(tab, {question, kind = 'ask', quote = '', context = null}) 
     renderAI();
     const res = await s.done;
     tab.ai.busy = null;
-    if (res.session) tab.ai.session = res.session; // the latest run carries the recent conversation
+    if (res.session) { tab.ai.session = res.session; tab.ai.started = true; }
     if (res.error && res.error !== 'CANCELED') { ans.text = aiErrText(res.error); ans.error = true; }
     else ans.text = res.text || ans.text || t('ai.err.empty');
     if (state.active === tab) renderAI();
@@ -2605,7 +2613,7 @@ async function askAI(tab, {question, kind = 'ask', quote = '', context = null}) 
         const tab = state.active;
         if (!tab) return;
         if (tab.ai.busy) App.AICancel(tab.ai.busy);
-        tab.ai = {msgs: [], busy: null};
+        tab.ai = newAIConversation();
         renderAI();
     };
     panel.querySelector('.ai-log').addEventListener('click', (e) => {

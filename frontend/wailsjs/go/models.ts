@@ -37,6 +37,8 @@ export namespace main {
 	    session: string;
 	    target: string;
 	    history: AIMsg[];
+	    conversation: string;
+	    resume: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AIRequest(source);
@@ -50,6 +52,8 @@ export namespace main {
 	        this.session = source["session"];
 	        this.target = source["target"];
 	        this.history = this.convertValues(source["history"], AIMsg);
+	        this.conversation = source["conversation"];
+	        this.resume = source["resume"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

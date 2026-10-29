@@ -37,6 +37,11 @@ type AIRequest struct {
 	Session  string  `json:"session"`
 	Target   string  `json:"target"`
 	History  []AIMsg `json:"history"`
+	// Conversation is the Claude Code session id the panel keeps per tab
+	// conversation; Resume is set once a question in it got an answer, so
+	// the CLI continues that session instead of starting a new one.
+	Conversation string `json:"conversation"`
+	Resume       bool   `json:"resume"`
 }
 
 type AIResult struct {
@@ -48,6 +53,14 @@ type AIResult struct {
 // aiSessionKey carries a *string through the context so runClaude can report
 // the CLI's session id without changing every caller.
 type aiSessionKey struct{}
+
+// aiConvKey carries an aiConv: which CLI session runClaude should use.
+type aiConvKey struct{}
+
+type aiConv struct {
+	ID     string
+	Resume bool
+}
 
 var aiJobs sync.Map // request id -> context.CancelFunc
 
@@ -149,12 +162,22 @@ func (a *App) runClaude(ctx context.Context, system, prompt string, onDelta func
 	if m := a.store.Settings().AIModel; m != "" {
 		args = append(args, "--model", m)
 	}
+	input := "<instructions>\n" + system + "\n</instructions>\n\n" + prompt
+	if conv, ok := ctx.Value(aiConvKey{}).(aiConv); ok && sessionIDRe.MatchString(conv.ID) {
+		if conv.Resume {
+			// The instructions are already in the session's first message.
+			args = append(args, "--resume", conv.ID)
+			input = prompt
+		} else {
+			args = append(args, "--session-id", conv.ID)
+		}
+	}
 	cmd := exec.CommandContext(ctx, exe, args...)
 	cmd.Dir = aiWorkDir()
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	// The real instructions travel on stdin: npm installs run claude.cmd through
 	// cmd.exe, which mangles multi-line arguments.
-	cmd.Stdin = strings.NewReader("<instructions>\n" + system + "\n</instructions>\n\n" + prompt)
+	cmd.Stdin = strings.NewReader(input)
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.StdoutPipe()
@@ -262,7 +285,19 @@ func (a *App) startAI(reqID string, timeout time.Duration, job func(ctx context.
 // AIAsk answers a question about the terminal (ask) or a selection (explain).
 func (a *App) AIAsk(reqID string, req AIRequest) {
 	a.startAI(reqID, 3*time.Minute, func(ctx context.Context, delta func(string)) (string, error) {
-		return a.runClaude(ctx, aiSystem(req.Kind), aiPrompt(req), delta)
+		if req.Conversation == "" {
+			return a.runClaude(ctx, aiSystem(req.Kind), aiPrompt(req), delta)
+		}
+		out, err := a.runClaude(context.WithValue(ctx, aiConvKey{}, aiConv{req.Conversation, req.Resume}), aiSystem(req.Kind), aiPrompt(req), delta)
+		switch {
+		case err != nil && req.Resume && strings.Contains(err.Error(), "No conversation found"):
+			// The CLI lost the session (cleaned up): start it again under the same id.
+			out, err = a.runClaude(context.WithValue(ctx, aiConvKey{}, aiConv{req.Conversation, false}), aiSystem(req.Kind), aiPrompt(req), delta)
+		case err != nil && !req.Resume && strings.Contains(err.Error(), "already in use"):
+			// An earlier question started the session but failed before reporting it.
+			out, err = a.runClaude(context.WithValue(ctx, aiConvKey{}, aiConv{req.Conversation, true}), aiSystem(req.Kind), aiPrompt(req), delta)
+		}
+		return out, err
 	})
 }
 
