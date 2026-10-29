@@ -6,6 +6,9 @@
 	"info": {
 		"0409": {
 			"ProductVersion": "{{.Info.ProductVersion}}",
+			"FileVersion": "{{.Info.ProductVersion}}",
+			"InternalName": "Hopline",
+			"OriginalFilename": "Hopline.exe",
 			"CompanyName": "{{.Info.CompanyName}}",
 			"FileDescription": "{{.Info.ProductName}}",
 			"LegalCopyright": "{{.Info.Copyright}}",

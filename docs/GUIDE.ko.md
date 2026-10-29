@@ -23,7 +23,7 @@
 
 ## 설치
 
-1. [최신 릴리스](https://github.com/minhyeok2487/Hopline/releases/latest)에서 `Hopline-<버전>.zip`(예: `Hopline-0.9.1.zip`)을 받아 원하는 폴더에 압축을 풉니다. 안에 `Hopline.exe` 하나가 들어 있고, 설정은 파일 이름·폴더와 상관없이 유지됩니다. `.exe` 다운로드가 허용되는 환경이면 `Hopline-<버전>.exe`를 바로 받아도 됩니다.
+1. [최신 릴리스](https://github.com/minhyeok2487/Hopline/releases/latest)에서 `Hopline.zip`을 받아 원하는 폴더에 압축을 풉니다. 안에 `Hopline.exe` 하나가 들어 있고, 설정은 파일 이름·폴더와 상관없이 유지됩니다. `.exe` 다운로드가 허용되는 환경이면 `Hopline.exe`를 바로 받아도 됩니다. 버전은 프로그램 안(설정 › 업데이트, 파일 속성 › 자세히)에서 확인합니다.
 2. 압축을 푼 폴더(예: `C:\Tools\Hopline\`)에서 `Hopline.exe`를 실행합니다. 설치 과정은 없습니다.
 3. 아직 코드 서명이 없어서 처음 실행할 때 Windows SmartScreen이 *"Windows의 PC 보호"* 경고를 띄울 수 있습니다. **추가 정보 → 실행**을 누르세요. 실행 전에 릴리스 페이지의 SHA-256 값과 파일을 비교해 볼 수 있습니다.
 

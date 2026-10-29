@@ -23,7 +23,7 @@ This guide walks through everyday use of Hopline: installing it, saving sessions
 
 ## Install
 
-1. Download `Hopline-<version>.zip` (for example `Hopline-0.9.1.zip`) from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest) and unzip it into any folder. It holds a single `Hopline.exe`; settings don't depend on the file name or folder. If your network allows `.exe` downloads you can take `Hopline-<version>.exe` instead.
+1. Download `Hopline.zip` from the [latest release](https://github.com/minhyeok2487/Hopline/releases/latest) and unzip it into any folder. It holds a single `Hopline.exe`; settings don't depend on the file name or folder. If your network allows `.exe` downloads you can take `Hopline.exe` instead. The version is in the program (Settings › Updates, and the file's Properties › Details).
 2. Keep the folder anywhere (for example `C:\Tools\Hopline\`) and run `Hopline.exe`. There is no installer.
 3. The executable is not code-signed yet, so Windows SmartScreen may say *"Windows protected your PC"*. Click **More info → Run anyway**. You can compare the file's SHA-256 with the value on the release page first.
 

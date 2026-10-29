@@ -9,7 +9,7 @@ import (
 
 func TestAssetPattern(t *testing.T) {
 	for name, want := range map[string]string{
-		"Hopline-0.9.1.zip": "zip", "Hopline-0.9.1.exe": "exe", "Hopline.exe": "exe",
+		"Hopline.zip": "zip", "Hopline.exe": "exe", "Hopline-0.9.1.zip": "zip", "Hopline-0.9.1.exe": "exe",
 		"Hopline-0.9.1.zip.sha256": "", "Other.zip": "",
 	} {
 		m := assetRe.FindStringSubmatch(name)

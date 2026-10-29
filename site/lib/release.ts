@@ -9,7 +9,7 @@ export type Release = { version: string; downloadUrl: string; sizeMB: string; pu
 
 const fallback: Release = {
   version: "",
-  downloadUrl: LATEST_URL,
+  downloadUrl: `${LATEST_URL}/download/Hopline.zip`, // stable name since 0.9.1
   sizeMB: "16 MB",
   publishedAt: "",
 };
@@ -24,8 +24,8 @@ export async function getLatestRelease(): Promise<Release> {
     });
     if (!res.ok) return fallback;
     const rel = await res.json();
-    // Prefer Hopline-<version>.zip (many networks block .exe downloads);
-    // older releases only have Hopline-<version>.exe or Hopline.exe.
+    // Prefer Hopline.zip (many networks block .exe downloads); older
+    // releases are Hopline-<version>.zip/.exe or Hopline.exe.
     type Asset = { name: string; size: number; browser_download_url: string };
     const assets: Asset[] = rel.assets ?? [];
     const pick =

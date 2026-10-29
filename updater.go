@@ -44,8 +44,9 @@ type UpdateInfo struct {
 	zipped bool // the asset is a .zip holding Hopline.exe
 }
 
-// Releases ship Hopline-<version>.zip (preferred: some networks block .exe
-// downloads) and, for older updaters, Hopline-<version>.exe.
+// Releases ship Hopline.zip (preferred: some networks block .exe downloads)
+// and, for older updaters, Hopline.exe. Older releases put the version in
+// the names (Hopline-0.9.1.zip), which still matches.
 var assetRe = regexp.MustCompile(`(?i)^Hopline(-[\w.]+)?\.(exe|zip)$`)
 var hashRe = regexp.MustCompile(`\b[0-9a-f]{64}\b`)
 
