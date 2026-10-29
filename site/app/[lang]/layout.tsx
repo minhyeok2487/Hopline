@@ -43,7 +43,9 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
   const { lang } = await params;
   if (!hasLocale(lang)) notFound();
   return (
-    <html lang={lang} className={`${sans.variable} ${mono.variable} ${kr.variable} antialiased`}>
+    // data-scroll-behavior: page changes jump to the top instead of smooth-scrolling
+    // (globals.css keeps smooth scrolling for in-page links like #features).
+    <html lang={lang} data-scroll-behavior="smooth" className={`${sans.variable} ${mono.variable} ${kr.variable} antialiased`}>
       <body>{children}</body>
     </html>
   );

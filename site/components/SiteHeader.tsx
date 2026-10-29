@@ -16,11 +16,11 @@ export function SiteHeader({ d, lang, page, downloadUrl }: { d: Dict; lang: Loca
           Hopline
         </Link>
         <div className="hidden items-center gap-6 text-sm text-dim md:flex">
-          <a href={`${home}#features`} className="hover:text-fg">{d.nav.features}</a>
-          <a href={`${home}#ai`} className="hover:text-fg">{d.nav.ai}</a>
-          <a href={`${home}#install`} className="hover:text-fg">{d.nav.install}</a>
+          <Link href={`${home}#features`} className="hover:text-fg">{d.nav.features}</Link>
+          <Link href={`${home}#ai`} className="hover:text-fg">{d.nav.ai}</Link>
+          <Link href={`${home}#install`} className="hover:text-fg">{d.nav.install}</Link>
           <Link href={`/${lang}/changelog`} className={page === "/changelog" ? "text-fg" : "hover:text-fg"}>{d.nav.changelog}</Link>
-          <a href={`${home}#faq`} className="hover:text-fg">{d.nav.faq}</a>
+          <Link href={`${home}#faq`} className="hover:text-fg">{d.nav.faq}</Link>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Link href={`/${other}${page}`} hrefLang={other} title={d.lang.label}
