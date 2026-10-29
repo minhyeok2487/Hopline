@@ -88,7 +88,6 @@ func (a *App) shutdown(ctx context.Context) {
 	systray.Quit()
 	a.StopTFTP()
 	a.stopMCP()
-	_ = a.StopRemoteControl()
 	a.mu.Lock()
 	all := make([]*liveConn, 0, len(a.conns))
 	for _, lc := range a.conns {

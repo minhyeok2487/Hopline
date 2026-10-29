@@ -2035,9 +2035,6 @@ async function mcpDialog() {
         <h4>Claude Code</h4>
         <span></span><div class="inline claude-btns"><button type="button" class="primary" data-x="claude">${icon('bot')}${t('mcp.connectClaude')}</button><button type="button" data-x="prompt">${t('mcp.copyPrompt')}</button></div>
         <p class="full hint">${t('mcp.claudeHint')}</p>
-        <h4>${t('rc.sec')}</h4>
-        <span></span><div class="inline rc-box" data-el="rc"></div>
-        <p class="full hint">${t('rc.hint')}</p>
         <h4>${t('mcp.manual')}</h4>
         ${info.command ? `<label class="full">${t('mcp.cmdLabel')}</label>
         <textarea class="full" name="cmd" rows="3" readonly>${esc(info.command)}</textarea>
@@ -2074,7 +2071,6 @@ async function mcpDialog() {
                     toast(t('mcp.promptCopied'), 'ok');
                 } catch (err) { toast(String(err), 'err'); }
             });
-            renderRCBox(r.querySelector('[data-el=rc]'), ensureOn);
             r.querySelector('[data-x=regen]')?.addEventListener('click', async () => {
                 info = await App.RegenerateMCPToken();
                 r.querySelector('[name=cmd]').value = info.command;
@@ -2092,42 +2088,6 @@ async function mcpDialog() {
     refreshMcpButton();
 }
 $('#btn-mcp').onclick = mcpDialog;
-
-// Remote control: a background `claude remote-control` the phone or claude.ai/code talks to.
-async function renderRCBox(box, ensureOn) {
-    const info = await App.RemoteControlInfo().catch(() => ({cli: false}));
-    if (!info.cli) { box.innerHTML = `<span class="hint">${t('rc.noCli')}</span>`; return; }
-    if (info.running) {
-        box.innerHTML = `<span class="ok-dot"></span><span>${t('rc.on')}</span>
-            <button type="button" class="primary" data-x="open">${icon('external')}${t('rc.open')}</button>
-            <button type="button" data-x="copy">${t('rc.copy')}</button>
-            <button type="button" class="danger" data-x="stop">${t('rc.stop')}</button>`;
-        box.querySelector('[data-x=open]').onclick = () => BrowserOpenURL(info.url);
-        box.querySelector('[data-x=copy]').onclick = () => { ClipboardSetText(info.url); toast(t('mcp.copied'), 'ok'); };
-        box.querySelector('[data-x=stop]').onclick = async () => { await App.StopRemoteControl(); renderRCBox(box, ensureOn); };
-        return;
-    }
-    const untrusted = info.error === 'UNTRUSTED';
-    box.innerHTML = untrusted
-        ? `<span class="hint">${t('rc.untrusted', {dir: esc(info.dir)})}</span>
-           <button type="button" data-x="trust">${t('rc.trust')}</button>
-           <button type="button" class="primary" data-x="start">${t('rc.retry')}</button>`
-        : `<button type="button" class="primary" data-x="start">${t('rc.start')}</button>
-           ${info.error ? `<span class="hint">${esc(info.error)}</span>` : ''}`;
-    box.querySelector('[data-x=trust]')?.addEventListener('click', async () => {
-        try { await App.TrustRemoteFolder(); toast(t('rc.trustOpened'), 'ok'); } catch (e) { toast(String(e), 'err'); }
-    });
-    box.querySelector('[data-x=start]').onclick = async (e) => {
-        e.currentTarget.disabled = true;
-        e.currentTarget.textContent = t('rc.starting');
-        try {
-            await ensureOn(); // the phone's Claude reaches Hopline through the MCP server
-            const res = await App.StartRemoteControl();
-            if (res.url) toast(t('rc.started'), 'ok');
-        } catch (err) { if (String(err) !== 'UNTRUSTED') toast(String(err), 'err'); }
-        renderRCBox(box, ensureOn);
-    };
-}
 
 // ---------------------------------------------------------------- updates
 

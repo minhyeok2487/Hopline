@@ -210,10 +210,6 @@ export function RegenerateMCPToken() {
   return window['go']['main']['App']['RegenerateMCPToken']();
 }
 
-export function RemoteControlInfo() {
-  return window['go']['main']['App']['RemoteControlInfo']();
-}
-
 export function RenameFolder(arg1, arg2) {
   return window['go']['main']['App']['RenameFolder'](arg1, arg2);
 }
@@ -350,16 +346,8 @@ export function SkipUpdate(arg1) {
   return window['go']['main']['App']['SkipUpdate'](arg1);
 }
 
-export function StartRemoteControl() {
-  return window['go']['main']['App']['StartRemoteControl']();
-}
-
 export function StartTFTP(arg1, arg2, arg3) {
   return window['go']['main']['App']['StartTFTP'](arg1, arg2, arg3);
-}
-
-export function StopRemoteControl() {
-  return window['go']['main']['App']['StopRemoteControl']();
 }
 
 export function StopTFTP() {
@@ -368,10 +356,6 @@ export function StopTFTP() {
 
 export function TrustHostKey(arg1) {
   return window['go']['main']['App']['TrustHostKey'](arg1);
-}
-
-export function TrustRemoteFolder() {
-  return window['go']['main']['App']['TrustRemoteFolder']();
 }
 
 export function WasUpdated() {
