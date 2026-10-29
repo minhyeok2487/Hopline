@@ -60,6 +60,8 @@ export function GetUpdateCheck():Promise<boolean>;
 
 export function GetVersion():Promise<string>;
 
+export function HasClaudeDesktop():Promise<boolean>;
+
 export function HideWindow(arg1:boolean):Promise<void>;
 
 export function ImportFile():Promise<main.ImportResult>;
@@ -83,6 +85,8 @@ export function LogPath(arg1:string):Promise<string>;
 export function MoveSession(arg1:string,arg2:string):Promise<void>;
 
 export function OpenBackup():Promise<main.BackupInfo>;
+
+export function OpenInClaudeDesktop(arg1:string):Promise<void>;
 
 export function OpenLogFolder():Promise<void>;
 

@@ -37,6 +37,24 @@ func TestRunClaudeStreams(t *testing.T) {
 	}
 }
 
+func TestRunClaudeReportsSession(t *testing.T) {
+	stubClaude(t,
+		`{"type":"system","subtype":"init","session_id":"3e0f96d9-8028-4c8a-8396-ac9348177154"}`,
+		`{"type":"result","subtype":"success","is_error":false,"result":"ok","session_id":"3e0f96d9-8028-4c8a-8396-ac9348177154"}`)
+	a := &App{store: &Store{dir: t.TempDir()}, noEvents: true}
+	var sid string
+	ctx := context.WithValue(context.Background(), aiSessionKey{}, &sid)
+	if _, err := a.runClaude(ctx, "sys", "q", func(string) {}); err != nil {
+		t.Fatal(err)
+	}
+	if sid != "3e0f96d9-8028-4c8a-8396-ac9348177154" {
+		t.Fatalf("session = %q", sid)
+	}
+	if err := a.OpenInClaudeDesktop("not-a-session"); err == nil {
+		t.Fatal("a bad session id must be refused")
+	}
+}
+
 func TestRunClaudeAuthError(t *testing.T) {
 	stubClaude(t,
 		`{"type":"assistant","error":"authentication_failed","message":{"content":[]}}`,

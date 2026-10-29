@@ -172,7 +172,7 @@ const ko = {
     'log.reveal': '탐색기에서 보기', 'log.truncated': '파일이 커서 마지막 4MB만 표시합니다', 'log.deleteAsk': '이 로그를 삭제할까요?',
     'log.title': '세션 로그', 'log.searchPh': '세션 이름 필터 · Enter: 로그 내용 검색',
     // AI
-    'ai.tip': 'AI 도우미 (Ctrl+Shift+A)', 'ai.title': 'AI 도우미', 'ai.new': '새 대화', 'ai.ph': '무엇이든 물어보세요 (Enter 보내기, Shift+Enter 줄바꿈)',
+    'ai.tip': 'AI 도우미 (Ctrl+Shift+A)', 'ai.title': 'AI 도우미', 'ai.new': '새 대화', 'ai.desktop': 'Claude 데스크탑 앱에서 이어가기 (테스트)', 'ai.desktopFail': 'Claude 데스크탑 앱을 열지 못했습니다: {e}', 'ai.ph': '무엇이든 물어보세요 (Enter 보내기, Shift+Enter 줄바꿈)',
     'ai.withScreen': '터미널 화면 함께 보내기', 'ai.send': '보내기', 'ai.stop': '중지', 'ai.chip': 'AI에게 묻기',
     'ai.askTab': 'AI 도우미 열기', 'ai.summaryTab': 'AI 작업 요약', 'ai.sec': 'AI 도우미',
     'ai.cliFound': '사용 가능', 'ai.cliMissing': '설치되어 있지 않습니다. MCP 연동 창의 안내대로 Claude Code를 설치하면 AI 기능을 쓸 수 있습니다.',
@@ -353,7 +353,7 @@ const en = {
     'log.none': 'No saved logs yet.<br>Press Record on a tab, or turn on automatic recording in Settings.', 'log.pick': 'Pick a log on the left',
     'log.reveal': 'Show in Explorer', 'log.truncated': 'Large file: showing the last 4 MB', 'log.deleteAsk': 'Delete this log?',
     'log.title': 'Session logs', 'log.searchPh': 'Filter sessions · Enter: search inside logs',
-    'ai.tip': 'AI assistant (Ctrl+Shift+A)', 'ai.title': 'AI assistant', 'ai.new': 'New conversation', 'ai.ph': 'Ask anything (Enter to send, Shift+Enter for a new line)',
+    'ai.tip': 'AI assistant (Ctrl+Shift+A)', 'ai.title': 'AI assistant', 'ai.new': 'New conversation', 'ai.desktop': 'Continue in the Claude desktop app (test)', 'ai.desktopFail': 'Could not open the Claude desktop app: {e}', 'ai.ph': 'Ask anything (Enter to send, Shift+Enter for a new line)',
     'ai.withScreen': 'Include the terminal screen', 'ai.send': 'Send', 'ai.stop': 'Stop', 'ai.chip': 'Ask AI',
     'ai.askTab': 'Open AI assistant', 'ai.summaryTab': 'AI work summary', 'ai.sec': 'AI assistant',
     'ai.cliFound': 'Ready', 'ai.cliMissing': 'Not installed. Install Claude Code (see the MCP dialog) to use the AI features.',

@@ -118,6 +118,10 @@ export function GetVersion() {
   return window['go']['main']['App']['GetVersion']();
 }
 
+export function HasClaudeDesktop() {
+  return window['go']['main']['App']['HasClaudeDesktop']();
+}
+
 export function HideWindow(arg1) {
   return window['go']['main']['App']['HideWindow'](arg1);
 }
@@ -164,6 +168,10 @@ export function MoveSession(arg1, arg2) {
 
 export function OpenBackup() {
   return window['go']['main']['App']['OpenBackup']();
+}
+
+export function OpenInClaudeDesktop(arg1) {
+  return window['go']['main']['App']['OpenInClaudeDesktop'](arg1);
 }
 
 export function OpenLogFolder() {

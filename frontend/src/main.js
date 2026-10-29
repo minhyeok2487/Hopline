@@ -2512,6 +2512,8 @@ function wireCommands(root, getTab) {
     });
 }
 
+let hasClaudeDesktop = false;
+
 function toggleAI(open = !prefs.aiOpen) {
     prefs.aiOpen = open;
     savePrefs();
@@ -2542,6 +2544,7 @@ function renderAI() {
             ? `${m.quote ? `<pre class="quote">${esc(m.quote)}</pre>` : ''}<div>${esc(m.text)}</div>`
             : (m.text ? renderMD(m.text, {commands: true, labels: mdLabels()}) : '<div class="typing"><i></i><i></i><i></i></div>')}</div>`).join('');
     }
+    panel.querySelector('[data-x=ai-desktop]').classList.toggle('hidden', !(hasClaudeDesktop && tab.ai.session && !tab.ai.busy));
     panel.querySelector('[data-x=ai-send]').innerHTML = tab.ai.busy ? `${icon('stop')}<span>${t('ai.stop')}</span>` : `${icon('send')}<span>${t('ai.send')}</span>`;
     log.scrollTop = log.scrollHeight;
 }
@@ -2567,6 +2570,7 @@ async function askAI(tab, {question, kind = 'ask', quote = '', context = null}) 
     renderAI();
     const res = await s.done;
     tab.ai.busy = null;
+    if (res.session) tab.ai.session = res.session; // the latest run carries the recent conversation
     if (res.error && res.error !== 'CANCELED') { ans.text = aiErrText(res.error); ans.error = true; }
     else ans.text = res.text || ans.text || t('ai.err.empty');
     if (state.active === tab) renderAI();
@@ -2590,6 +2594,13 @@ async function askAI(tab, {question, kind = 'ask', quote = '', context = null}) 
         if (e.key === 'Escape') { e.preventDefault(); focusActive(); }
     });
     panel.querySelector('[data-x=ai-close]').onclick = () => toggleAI(false);
+    // Test: hand the conversation to the Claude desktop app (claude://resume, the app's own link).
+    App.HasClaudeDesktop().then((v) => { hasClaudeDesktop = v; renderAI(); }).catch(() => {});
+    panel.querySelector('[data-x=ai-desktop]').onclick = async () => {
+        const tab = state.active;
+        if (!tab?.ai.session) return;
+        try { await App.OpenInClaudeDesktop(tab.ai.session); } catch (e) { toast(t('ai.desktopFail', {e: String(e)}), 'err'); }
+    };
     panel.querySelector('[data-x=ai-new]').onclick = () => {
         const tab = state.active;
         if (!tab) return;

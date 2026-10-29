@@ -40,9 +40,14 @@ type AIRequest struct {
 }
 
 type AIResult struct {
-	Text  string `json:"text"`
-	Error string `json:"error,omitempty"` // NO_CLI, AI_AUTH, CANCELED or a message
+	Text    string `json:"text"`
+	Error   string `json:"error,omitempty"`   // NO_CLI, AI_AUTH, CANCELED or a message
+	Session string `json:"session,omitempty"` // Claude Code session id of this run (see OpenInClaudeDesktop)
 }
+
+// aiSessionKey carries a *string through the context so runClaude can report
+// the CLI's session id without changing every caller.
+type aiSessionKey struct{}
 
 var aiJobs sync.Map // request id -> context.CancelFunc
 
@@ -165,12 +170,13 @@ func (a *App) runClaude(ctx context.Context, system, prompt string, onDelta func
 	sc.Buffer(make([]byte, 1<<20), 16<<20)
 	for sc.Scan() {
 		var ev struct {
-			Type    string `json:"type"`
-			Subtype string `json:"subtype"`
-			Error   string `json:"error"`
-			Result  string `json:"result"`
-			IsError bool   `json:"is_error"`
-			Event   struct {
+			Type      string `json:"type"`
+			Subtype   string `json:"subtype"`
+			SessionID string `json:"session_id"`
+			Error     string `json:"error"`
+			Result    string `json:"result"`
+			IsError   bool   `json:"is_error"`
+			Event     struct {
 				Type  string `json:"type"`
 				Delta struct {
 					Type string `json:"type"`
@@ -180,6 +186,9 @@ func (a *App) runClaude(ctx context.Context, system, prompt string, onDelta func
 		}
 		if json.Unmarshal(sc.Bytes(), &ev) != nil {
 			continue
+		}
+		if sid, ok := ctx.Value(aiSessionKey{}).(*string); ok && ev.SessionID != "" {
+			*sid = ev.SessionID
 		}
 		switch ev.Type {
 		case "stream_event":
@@ -230,7 +239,8 @@ func firstLine(s, fallback string) string {
 
 // startAI runs job in the background and reports through ai:delta/ai:done events.
 func (a *App) startAI(reqID string, timeout time.Duration, job func(ctx context.Context, delta func(string)) (string, error)) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	var sid string
+	ctx, cancel := context.WithTimeout(context.WithValue(context.Background(), aiSessionKey{}, &sid), timeout)
 	aiJobs.Store(reqID, cancel)
 	go func() {
 		defer func() {
@@ -238,7 +248,7 @@ func (a *App) startAI(reqID string, timeout time.Duration, job func(ctx context.
 			cancel()
 		}()
 		text, err := job(ctx, func(d string) { a.emit("ai:delta:"+reqID, d) })
-		res := AIResult{Text: text}
+		res := AIResult{Text: text, Session: sid}
 		if err != nil {
 			res.Error = err.Error()
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
