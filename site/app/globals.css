@@ -91,3 +91,23 @@ body {
   html { scroll-behavior: auto; }
   .btn:hover { transform: none; }
 }
+
+/* Release notes rendered by GitHub (changelog page). */
+.notes { color: var(--color-dim); line-height: 1.75; font-size: 0.95rem; }
+.notes h2 { color: var(--color-fg); font-size: 1.25rem; font-weight: 700; margin: 1.75rem 0 0.75rem; }
+.notes h3 { color: var(--color-fg); font-size: 1.05rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.notes > :first-child { margin-top: 0; }
+.notes p { margin: 0.6rem 0; }
+.notes ul, .notes ol { margin: 0.6rem 0; padding-left: 1.3rem; }
+.notes ul { list-style: disc; }
+.notes ol { list-style: decimal; }
+.notes li { margin: 0.3rem 0; }
+.notes li::marker { color: var(--color-faint); }
+.notes strong { color: var(--color-fg); font-weight: 600; }
+.notes a { color: var(--color-acc); }
+.notes a:hover { text-decoration: underline; }
+.notes code { font-family: var(--font-mono); font-size: 0.85em; background: var(--color-panel2); border: 1px solid var(--color-line); border-radius: 6px; padding: 0.1em 0.35em; color: var(--color-fg); }
+.notes pre { background: var(--color-panel); border: 1px solid var(--color-line); border-radius: 10px; padding: 0.9rem 1rem; overflow-x: auto; margin: 0.8rem 0; }
+.notes pre code { background: none; border: 0; padding: 0; }
+.notes img { max-width: 100%; height: auto; border-radius: 10px; }
+.notes .anchor, .notes .octicon { display: none; }

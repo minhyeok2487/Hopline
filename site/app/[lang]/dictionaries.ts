@@ -4,7 +4,7 @@ const en = {
     description:
       "Hopline is a free, open-source SSH, Telnet, SFTP and serial terminal for Windows in a single 16 MB executable, with a built-in MCP server so AI assistants like Claude Code can work in your sessions while you watch.",
   },
-  nav: { features: "Features", ai: "AI", install: "Install", faq: "FAQ", github: "GitHub" },
+  nav: { features: "Features", ai: "AI", install: "Install", changelog: "Release notes", faq: "FAQ", github: "GitHub" },
   hero: {
     badge: "Free and open source · Windows",
     title1: "A lightweight terminal",
@@ -86,6 +86,14 @@ const en = {
       { q: "Which AI assistants work?", a: "Any MCP client that supports streamable HTTP with a bearer token. One-click setup is built for Claude Code." },
     ],
   },
+  changelog: {
+    title: "Release notes",
+    lead: "What changed in each version of Hopline. Hopline offers new versions itself (Settings › Updates).",
+    note: "",
+    latest: "Latest",
+    onGitHub: "View on GitHub",
+    empty: "Release notes couldn't be loaded right now. See them on GitHub.",
+  },
   footer: { made: "Made for network engineers.", license: "MIT License", releases: "Releases", guide: "User guide" },
   lang: { switch: "한국어", label: "Language" },
 };
@@ -98,7 +106,7 @@ const ko: Dict = {
     description:
       "Hopline은 Windows용 무료 오픈소스 SSH·텔넷·SFTP·시리얼 터미널입니다. 16MB 실행 파일 하나로 동작하고, MCP 서버가 내장되어 Claude Code 같은 AI가 내 세션에서 일하는 모습을 그대로 지켜볼 수 있습니다.",
   },
-  nav: { features: "기능", ai: "AI 연동", install: "설치", faq: "FAQ", github: "GitHub" },
+  nav: { features: "기능", ai: "AI 연동", install: "설치", changelog: "업데이트 노트", faq: "FAQ", github: "GitHub" },
   hero: {
     badge: "무료 · 오픈소스 · Windows",
     title1: "AI가 직접 다루는",
@@ -179,6 +187,14 @@ const ko: Dict = {
       { q: "MobaXterm이나 PuTTY에서 쓰던 세션을 옮길 수 있나요?", a: "네. 세션 목록 위의 가져오기 버튼을 누르면 이 PC의 MobaXterm, PuTTY, SecureCRT, Xshell 세션을 찾아 폴더 구조째 가져옵니다. 비밀번호는 가져오지 않고, 처음 접속할 때 묻습니다." },
       { q: "어떤 AI와 쓸 수 있나요?", a: "토큰 인증을 쓰는 HTTP 방식의 MCP를 지원하는 클라이언트면 됩니다. 원클릭 설정은 Claude Code용입니다." },
     ],
+  },
+  changelog: {
+    title: "업데이트 노트",
+    lead: "버전별로 바뀐 내용입니다. 새 버전은 Hopline이 직접 알려 줍니다(설정 › 업데이트).",
+    note: "릴리스 노트는 영어로 작성됩니다.",
+    latest: "최신",
+    onGitHub: "GitHub에서 보기",
+    empty: "지금은 업데이트 노트를 불러오지 못했습니다. GitHub에서 확인하세요.",
   },
   footer: { made: "네트워크 엔지니어를 위해 만들었습니다.", license: "MIT 라이선스", releases: "릴리스", guide: "사용 가이드" },
   lang: { switch: "English", label: "언어" },
