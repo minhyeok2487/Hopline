@@ -38,6 +38,9 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
               <a href={rel.downloadUrl} className="btn btn-primary text-base">
                 <Icon name="download" />{d.hero.download}
               </a>
+              <a href="#watch" className="btn btn-ghost text-base">
+                <Icon name="play" />{d.hero.watch}
+              </a>
               <a href={REPO_URL} className="btn btn-ghost text-base">
                 <Icon name="github" />{d.hero.github}
               </a>
@@ -52,6 +55,23 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
               <video className="block aspect-video w-full" src="/media/hero.mp4" poster="/media/hero-poster.jpg"
                 autoPlay muted loop playsInline preload="metadata" aria-label="Claude Code running commands in Hopline tabs" />
             </div>
+          </div>
+        </section>
+
+        {/* ---------- video ---------- */}
+        <section id="watch" className="relative scroll-mt-20 overflow-hidden border-t border-line/70">
+          <div className="glow pointer-events-none absolute inset-0 opacity-50" />
+          <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6">
+            <div className="mx-auto max-w-3xl text-center">
+              <span className="text-sm font-semibold uppercase tracking-wider text-acc">{d.watch.eyebrow}</span>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{d.watch.title}</h2>
+              <p className="mt-4 leading-relaxed text-dim">{d.watch.lead}</p>
+            </div>
+            <div className="window mx-auto mt-10 max-w-5xl">
+              <video className="block aspect-video w-full bg-[#0b111c]" src="/media/hopline-ai.mp4" poster="/media/hopline-ai-poster.jpg"
+                controls playsInline preload="metadata" aria-label={d.watch.title} />
+            </div>
+            {d.watch.note && <p className="mt-4 text-center text-xs text-faint">{d.watch.note}</p>}
           </div>
         </section>
 

@@ -12,8 +12,15 @@ const en = {
     lead: "SSH, Telnet, SFTP and serial consoles in one 16 MB executable. A built-in MCP server lets Claude Code open your sessions, run commands and read the output, in tabs you can see.",
     download: "Download for Windows",
     github: "View on GitHub",
+    watch: "Watch the video",
     meta: "{version} · {size} · no installer",
     or: "or with Scoop",
+  },
+  watch: {
+    eyebrow: "See it in 85 seconds",
+    title: "Hopline × Claude",
+    lead: "Claude Code opens three switches at once, finds why a port went down, and brings it back only after you approve. Then the AI built into Hopline: explaining output, summarizing logs and comparing scheduled checks.",
+    note: "Captions are in Korean.",
   },
   strip: ["Single 16 MB .exe", "SSH · Telnet · SFTP · Serial", "Built-in MCP server", "MIT license"],
   features: {
@@ -114,8 +121,15 @@ const ko: Dict = {
     lead: "SSH, 텔넷, SFTP, 시리얼 콘솔을 16MB 실행 파일 하나에 담았습니다. 내장 MCP 서버로 Claude Code가 세션을 열고 명령을 실행해 결과를 읽습니다. 모든 과정은 눈앞의 탭에서 이뤄집니다.",
     download: "Windows용 다운로드",
     github: "GitHub에서 보기",
+    watch: "영상으로 보기",
     meta: "{version} · {size} · 설치 필요 없음",
     or: "Scoop으로 설치",
+  },
+  watch: {
+    eyebrow: "85초로 보는 AI 연동",
+    title: "Hopline × Claude",
+    lead: "Claude Code가 스위치 3대를 동시에 점검하고, 포트가 죽은 원인을 찾고, 승인을 받은 뒤에만 복구합니다. 이어서 Hopline에 내장된 AI가 출력을 설명하고, 로그를 요약하고, 정기 점검 결과를 비교합니다.",
+    note: "",
   },
   strip: ["16MB 실행 파일 하나", "SSH · 텔넷 · SFTP · 시리얼", "MCP 서버 내장", "MIT 라이선스"],
   features: {

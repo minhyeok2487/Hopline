@@ -1,4 +1,5 @@
 const paths: Record<string, string> = {
+  play: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
   spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   bolt: '<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>',
