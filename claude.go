@@ -72,7 +72,26 @@ func findClaude() string {
 			return p
 		}
 	}
-	return ""
+	return desktopClaude(os.Getenv("LOCALAPPDATA"))
+}
+
+// desktopClaude finds the Claude Code that the Claude desktop app keeps for
+// itself (%LOCALAPPDATA%\Claude-Data\claude_<id>\claude-code\<version>\<build>\claude.exe),
+// newest version first, for people who use the desktop app without the CLI.
+// It reads the same ~/.claude.json, so registering with it reaches the app too.
+func desktopClaude(localAppData string) string {
+	if localAppData == "" {
+		return ""
+	}
+	found, _ := filepath.Glob(filepath.Join(localAppData, "Claude-Data", "claude_*", "claude-code", "*", "*", "claude.exe"))
+	best, bestVer := "", ""
+	for _, p := range found {
+		ver := filepath.Base(filepath.Dir(filepath.Dir(p)))
+		if best == "" || newer(ver, bestVer) {
+			best, bestVer = p, ver
+		}
+	}
+	return best
 }
 
 func runHidden(exe string, args ...string) (string, error) {

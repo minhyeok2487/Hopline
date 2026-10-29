@@ -190,7 +190,7 @@ Click **Log** in the toolbar to start recording the active tab; the tab shows a 
 
 ## AI assistant and scheduled checks
 
-Hopline's AI features run on the [Claude Code](https://claude.com/claude-code) CLI installed on your PC, with the account it is signed in to; there is no API key to set. The AI gets the text Hopline sends it (screen, selection, log) and nothing else: it can't type in your sessions by itself, and saved passwords never leave Hopline. Settings › AI assistant shows whether Claude Code was found and lets you pick a model.
+Hopline's AI features run on the [Claude Code](https://claude.com/claude-code) on your PC (the CLI, or the one built into the Claude desktop app), with the account it is signed in to; there is no API key to set. The AI gets the text Hopline sends it (screen, selection, log) and nothing else: it can't type in your sessions by itself, and saved passwords never leave Hopline. Settings › AI assistant shows whether Claude Code was found and lets you pick a model.
 
 **AI assistant panel** (**AI** button or `Ctrl+Shift+A`). Ask about the current tab in plain words: *"anything wrong here?"*, *"how do I see interfaces that are down?"*. With **Include the terminal screen** checked, the last screenful of the tab is sent along. Commands in the answer get buttons:
 
@@ -248,7 +248,8 @@ Hopline can run a local MCP server so an AI assistant such as Claude Code can op
 **Set up**
 
 1. Click **MCP** in the toolbar and press **Connect to Claude Code**. Hopline turns the server on (it listens on `127.0.0.1:7781` only and requires a token), registers it with Claude Code and installs the `hopline` skill to `~/.claude/skills/hopline`.
-   - If the `claude` command isn't installed on this PC, press **Copy setup prompt for Claude** and paste it into a Claude Code chat. Claude registers the server and saves the skill for you.
+   - Using the Claude desktop app without the CLI also works: Hopline uses the Claude Code built into the app, and the server then shows up in the app's Code tab.
+   - If neither is found, press **Copy setup prompt for Claude** and paste it into a Claude Code chat. Claude registers the server and saves the skill for you.
    - To do it by hand, check **Enable MCP server**, then run the command from **Copy command** once in a terminal:
 
      ```bash

@@ -190,7 +190,7 @@ Hopline은 Microsoft Edge WebView2 런타임이 필요합니다. Windows 11과 �
 
 ## AI 도우미와 정기 점검
 
-Hopline의 AI 기능은 PC에 설치된 [Claude Code](https://claude.com/claude-code) CLI를, 로그인된 계정 그대로 사용합니다. 따로 API 키를 넣을 필요가 없습니다. AI는 Hopline이 보내는 텍스트(화면, 선택 영역, 로그)만 받으며, 스스로 세션에 입력할 수 없고 저장된 비밀번호는 Hopline 밖으로 나가지 않습니다. 설정 › AI 도우미에서 Claude Code를 찾았는지 확인하고 모델을 고를 수 있습니다.
+Hopline의 AI 기능은 PC의 [Claude Code](https://claude.com/claude-code)(CLI 또는 Claude 데스크탑 앱에 들어 있는 것)를, 로그인된 계정 그대로 사용합니다. 따로 API 키를 넣을 필요가 없습니다. AI는 Hopline이 보내는 텍스트(화면, 선택 영역, 로그)만 받으며, 스스로 세션에 입력할 수 없고 저장된 비밀번호는 Hopline 밖으로 나가지 않습니다. 설정 › AI 도우미에서 Claude Code를 찾았는지 확인하고 모델을 고를 수 있습니다.
 
 **AI 도우미 패널** (**AI** 버튼 또는 `Ctrl+Shift+A`). 현재 탭에 대해 평소 말투로 물어보세요. *"지금 화면에 이상한 거 있어?"*, *"다운된 인터페이스 보는 명령 알려줘"*. **터미널 화면 함께 보내기**가 켜져 있으면 탭의 최근 화면이 같이 전달됩니다. 답에 있는 명령에는 버튼이 붙습니다.
 
@@ -248,7 +248,8 @@ Hopline은 로컬 MCP 서버를 띄워 Claude Code 같은 AI 어시스턴트가 
 **설정**
 
 1. 도구 막대의 **MCP**를 누르고 **Claude Code에 연결**을 누릅니다. Hopline이 서버를 켜고(`127.0.0.1:7781`에서만 열리고 토큰 필요) Claude Code에 등록한 뒤 `hopline` 스킬을 `~/.claude/skills/hopline`에 설치합니다.
-   - 이 PC에 `claude` 명령이 없으면 **Claude용 설정 문구 복사**를 눌러 Claude Code 채팅에 붙여넣으세요. Claude가 등록과 스킬 저장을 대신 합니다.
+   - CLI 없이 Claude 데스크탑 앱만 써도 됩니다. Hopline이 앱에 들어 있는 Claude Code로 등록하고, 앱의 Code 탭에서 hopline을 쓸 수 있습니다.
+   - 둘 다 없으면 **Claude용 설정 문구 복사**를 눌러 Claude Code 채팅에 붙여넣으세요. Claude가 등록과 스킬 저장을 대신 합니다.
    - 직접 하려면 **MCP 서버 켜기**를 체크하고 **명령 복사**로 복사한 명령을 터미널에서 한 번 실행합니다.
 
      ```bash
