@@ -555,3 +555,7 @@ pre.code { margin: 0 0 6px; background: var(--term-bg); padding: 6px 8px; border
 .run-body { flex: 1; overflow: auto; min-height: 0; user-select: text; line-height: 1.55; }
 .run-body pre { max-height: none; }
 .modal.wide:has(.chk-runs) { width: min(1000px, calc((100vw - 32px) / var(--ui-zoom, 1))); }
+
+/* Remote control row in the MCP dialog */
+.rc-box { flex-wrap: wrap; align-items: center; }
+.rc-box .ok-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }

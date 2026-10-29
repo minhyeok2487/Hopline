@@ -106,6 +106,8 @@ export function ReadLog(arg1:string):Promise<main.LogText>;
 
 export function RegenerateMCPToken():Promise<main.MCPInfo>;
 
+export function RemoteControlInfo():Promise<main.RCInfo>;
+
 export function RenameFolder(arg1:string,arg2:string):Promise<void>;
 
 export function ReorderMacros(arg1:Array<string>):Promise<void>;
@@ -174,11 +176,17 @@ export function ShowWindow():Promise<void>;
 
 export function SkipUpdate(arg1:string):Promise<void>;
 
+export function StartRemoteControl():Promise<main.RCInfo>;
+
 export function StartTFTP(arg1:string,arg2:number,arg3:boolean):Promise<main.TFTPInfo>;
+
+export function StopRemoteControl():Promise<void>;
 
 export function StopTFTP():Promise<void>;
 
 export function TrustHostKey(arg1:string):Promise<void>;
+
+export function TrustRemoteFolder():Promise<void>;
 
 export function WasUpdated():Promise<boolean>;
 

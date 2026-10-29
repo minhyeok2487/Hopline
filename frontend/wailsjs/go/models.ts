@@ -485,6 +485,26 @@ export namespace main {
 	        this.confirm = source["confirm"];
 	    }
 	}
+	export class RCInfo {
+	    cli: boolean;
+	    running: boolean;
+	    url: string;
+	    dir: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RCInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cli = source["cli"];
+	        this.running = source["running"];
+	        this.url = source["url"];
+	        this.dir = source["dir"];
+	        this.error = source["error"];
+	    }
+	}
 	export class RestoreResult {
 	    added: number;
 	    skipped: number;
