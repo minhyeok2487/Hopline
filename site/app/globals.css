@@ -111,3 +111,6 @@ body {
 .notes pre code { background: none; border: 0; padding: 0; }
 .notes img { max-width: 100%; height: auto; border-radius: 10px; }
 .notes .anchor, .notes .octicon { display: none; }
+.notes table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 0.9rem 0; font-size: 0.875rem; }
+.notes th, .notes td { border: 1px solid var(--color-line); padding: 0.4rem 0.7rem; text-align: left; vertical-align: top; }
+.notes th { color: var(--color-fg); background: var(--color-panel2); font-weight: 600; }

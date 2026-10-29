@@ -42,12 +42,14 @@ export async function getLatestRelease(): Promise<Release> {
   }
 }
 
-export type ReleaseNote = { version: string; publishedAt: string; url: string; html: string };
+/** `ko` is empty when a release has no Korean notes. */
+export type ReleaseNote = { version: string; publishedAt: string; url: string; en: string; ko: string };
 
 /**
  * Release notes for the changelog page, newest first (refreshed every 10 minutes).
- * GitHub renders and sanitizes the markdown (body_html); the "What's new"
- * heading and the repeated "Install" section at the end are dropped.
+ * A release body is the English notes, then a "## 한국어" section with the
+ * Korean notes, then "## Install". GitHub renders and sanitizes the markdown
+ * (body_html); the Install section and the "What's new" heading are dropped.
  */
 export async function getReleaseNotes(): Promise<ReleaseNote[]> {
   "use cache";
@@ -61,14 +63,17 @@ export async function getReleaseNotes(): Promise<ReleaseNote[]> {
     const rels: Rel[] = await res.json();
     return rels
       .filter((r) => !r.draft && !r.prerelease)
-      .map((r) => ({
-        version: r.tag_name,
-        publishedAt: r.published_at,
-        url: r.html_url,
-        html: (r.body_html ?? "")
-          .split(/<h2[^>]*>\s*Install\b/i)[0]
-          .replace(/^\s*<h2[^>]*>\s*What(?:'|&#39;|’)s new\s*<\/h2>/i, ""),
-      }));
+      .map((r) => {
+        const notes = (r.body_html ?? "").split(/<h2[^>]*>\s*Install\b/i)[0];
+        const [en, ko = ""] = notes.split(/<h2[^>]*>\s*한국어\s*<\/h2>/);
+        return {
+          version: r.tag_name,
+          publishedAt: r.published_at,
+          url: r.html_url,
+          en: en.replace(/^\s*<h2[^>]*>\s*What(?:'|&#39;|’)s new\s*<\/h2>/i, "").replace(/<hr\s*\/?>\s*$/, ""),
+          ko: ko.trim(),
+        };
+      });
   } catch {
     return [];
   }

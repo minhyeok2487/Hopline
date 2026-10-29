@@ -31,7 +31,6 @@ export default async function Changelog({ params }: PageProps<"/[lang]/changelog
       <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{d.changelog.title}</h1>
         <p className="mt-4 text-dim">{d.changelog.lead}</p>
-        {d.changelog.note && <p className="mt-2 text-sm text-faint">{d.changelog.note}</p>}
 
         {notes.length === 0 ? (
           <p className="card mt-10 p-6 text-dim">
@@ -52,8 +51,9 @@ export default async function Changelog({ params }: PageProps<"/[lang]/changelog
                     {d.changelog.onGitHub}<Icon name="arrow" className="h-3.5 w-3.5" />
                   </a>
                 </div>
+                {lang === "ko" && !n.ko && d.changelog.englishOnly && <p className="mt-4 text-xs text-faint">{d.changelog.englishOnly}</p>}
                 {/* GitHub renders and sanitizes this HTML from the release notes. */}
-                <div className="notes mt-5" dangerouslySetInnerHTML={{ __html: n.html }} />
+                <div className="notes mt-5" dangerouslySetInnerHTML={{ __html: lang === "ko" && n.ko ? n.ko : n.en }} />
               </li>
             ))}
           </ol>

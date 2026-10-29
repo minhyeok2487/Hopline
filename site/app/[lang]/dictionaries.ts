@@ -89,7 +89,7 @@ const en = {
   changelog: {
     title: "Release notes",
     lead: "What changed in each version of Hopline. Hopline offers new versions itself (Settings › Updates).",
-    note: "",
+    englishOnly: "",
     latest: "Latest",
     onGitHub: "View on GitHub",
     empty: "Release notes couldn't be loaded right now. See them on GitHub.",
@@ -191,7 +191,7 @@ const ko: Dict = {
   changelog: {
     title: "업데이트 노트",
     lead: "버전별로 바뀐 내용입니다. 새 버전은 Hopline이 직접 알려 줍니다(설정 › 업데이트).",
-    note: "릴리스 노트는 영어로 작성됩니다.",
+    englishOnly: "이 버전의 노트는 영어로만 작성되어 있습니다.",
     latest: "최신",
     onGitHub: "GitHub에서 보기",
     empty: "지금은 업데이트 노트를 불러오지 못했습니다. GitHub에서 확인하세요.",
