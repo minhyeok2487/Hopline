@@ -228,8 +228,10 @@ func text(s string) *mcp.CallToolResult {
 func (a *App) newMCPServer() *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "hopline", Title: "Hopline", Version: appVersion}, &mcp.ServerOptions{
 		Instructions: "Hopline is the user's terminal app. Sessions open as visible tabs the user can watch. " +
-			"Start with list_tabs: if the user already has a connected tab for the device, use it (pass tab=\"active\" for the tab the user is looking at). " +
-			"Only call open_session when no suitable tab is open; it reuses an existing tab of the same session unless new=true. " +
+			"Start with list_tabs: if the user already has a connected tab for the device, use it. " +
+			"Pass tab=\"active\" only when the user means the tab they are looking at (\"this tab\"); otherwise always pass the tab id you got, because the user keeps working in other tabs while you run. " +
+			"Only call open_session when no suitable tab is open; it reuses an existing tab of the same session unless new=true, and opens new tabs in the background. " +
+			"Other AI sessions may be using Hopline at the same time: leave tabs marked \"in use by another AI session\" alone; if a call says a tab is busy, open your own with open_session new=true. " +
 			"Network devices: --More-- pagers are answered automatically. " +
 			"To run the same command on several devices, use run_on_tabs: it opens saved sessions if needed and runs on all of them in parallel. " +
 			"Never change device configuration unless the user explicitly asked for it.",
@@ -251,8 +253,9 @@ func (a *App) newMCPServer() *mcp.Server {
 			return text(b.String()), nil, nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{Name: "list_tabs", Description: "List connected tabs, including ones the user opened: id, name, kind, target. The tab the user is currently looking at is marked (active)."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
+	mcp.AddTool(s, &mcp.Tool{Name: "list_tabs", Description: "List connected tabs, including ones the user opened: id, name, kind, target. The tab the user is currently looking at is marked (active); tabs another AI session is driving are marked so you can leave them alone."},
+		func(ctx context.Context, req *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
+			agent := agentID(req)
 			a.mu.Lock()
 			defer a.mu.Unlock()
 			var b strings.Builder
@@ -270,6 +273,9 @@ func (a *App) newMCPServer() *mcp.Server {
 				if id == a.activeTab {
 					mark = " | (active)"
 				}
+				if st := lc.lock.state(agent); st != "" {
+					mark += " | " + st
+				}
 				fmt.Fprintf(&b, "- tab=%s | %s | %s | %s%s\n", id, lc.name, kind, lc.target, mark)
 			}
 			if b.Len() == 0 {
@@ -278,13 +284,13 @@ func (a *App) newMCPServer() *mcp.Server {
 			return text(b.String()), nil, nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{Name: "open_session", Description: "Get a connected tab for a saved session. If the user already has one open it is reused and brought to the front; otherwise a new visible tab is opened and connected (set new=true to always open another). If no password is saved, the user is prompted in the app (wait up to 2 minutes). Returns the tab id and recent output."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in openIn) (*mcp.CallToolResult, any, error) {
+	mcp.AddTool(s, &mcp.Tool{Name: "open_session", Description: "Get a connected tab for a saved session. If the user already has one open (and no other AI session is driving it) it is reused; otherwise a new tab is opened in the background and connected (set new=true to always open another). The user's current tab is not switched. If no password is saved, the user is prompted in the app (wait up to 2 minutes). Returns the tab id and recent output: use that id for the following calls."},
+		func(ctx context.Context, req *mcp.CallToolRequest, in openIn) (*mcp.CallToolResult, any, error) {
 			sess, err := a.findSession(in.Session)
 			if err != nil {
 				return nil, nil, err
 			}
-			lc, msg, err := a.openForMCP(ctx, sess, in.New)
+			lc, msg, err := a.openForMCP(ctx, agentID(req), sess, in.New)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -292,16 +298,21 @@ func (a *App) newMCPServer() *mcp.Server {
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "run_on_tabs", Description: "Run the same command on several devices at once and return each one's output, labelled by tab. Give connected tabs (ids or names, or \"all\") and/or saved sessions (opened or reused first, in parallel). Use for fleet checks such as the same show command on every switch; prefer it over calling run_command repeatedly."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in multiIn) (*mcp.CallToolResult, any, error) {
-			return a.runOnTabs(ctx, in)
+		func(ctx context.Context, req *mcp.CallToolRequest, in multiIn) (*mcp.CallToolResult, any, error) {
+			return a.runOnTabs(ctx, agentID(req), in)
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "run_command", Description: "Send a command line to a tab and return its output. Finishes when output goes idle, a shell/CLI prompt appears, `expect` matches, or the timeout hits. For long-running commands pass `expect` (e.g. the prompt) and a larger timeout_sec."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in runIn) (*mcp.CallToolResult, any, error) {
+		func(ctx context.Context, req *mcp.CallToolRequest, in runIn) (*mcp.CallToolResult, any, error) {
 			lc, err := a.resolveTab(in.Tab)
 			if err != nil {
 				return nil, nil, err
 			}
+			release, err := a.claim(lc, agentID(req))
+			if err != nil {
+				return nil, nil, err
+			}
+			defer release()
 			out, err := a.runCommand(ctx, lc, in)
 			if err != nil {
 				return nil, nil, err
@@ -310,11 +321,16 @@ func (a *App) newMCPServer() *mcp.Server {
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "send_keys", Description: "Type raw text/control keys into a tab (interactive prompts, Ctrl+C, answering y/n) and return the output that follows."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in keysIn) (*mcp.CallToolResult, any, error) {
+		func(ctx context.Context, req *mcp.CallToolRequest, in keysIn) (*mcp.CallToolResult, any, error) {
 			lc, err := a.resolveTab(in.Tab)
 			if err != nil {
 				return nil, nil, err
 			}
+			release, err := a.claim(lc, agentID(req))
+			if err != nil {
+				return nil, nil, err
+			}
+			defer release()
 			wait := in.WaitMs
 			if wait <= 0 {
 				wait = 1000
@@ -350,11 +366,16 @@ func (a *App) newMCPServer() *mcp.Server {
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "close_tab", Description: "Disconnect and close a tab."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in tabIn) (*mcp.CallToolResult, any, error) {
+		func(ctx context.Context, req *mcp.CallToolRequest, in tabIn) (*mcp.CallToolResult, any, error) {
 			lc, err := a.resolveTab(in.Tab)
 			if err != nil {
 				return nil, nil, err
 			}
+			release, err := a.claim(lc, agentID(req))
+			if err != nil {
+				return nil, nil, err
+			}
+			release()
 			a.closeConn(lc, T("msg.mcpDisconnected"))
 			runtime.EventsEmit(a.ctx, "mcp:close", lc.id)
 			return text("closed " + lc.id), nil, nil
@@ -409,8 +430,17 @@ func (a *App) newMCPServer() *mcp.Server {
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "sftp_write_file", Description: "Write (overwrite) a remote text file over SFTP. Only use when the user asked to change files."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in sftpWriteIn) (*mcp.CallToolResult, any, error) {
-			cl, err := a.sftpForTab(in.Tab)
+		func(ctx context.Context, req *mcp.CallToolRequest, in sftpWriteIn) (*mcp.CallToolResult, any, error) {
+			lc, err := a.resolveTab(in.Tab)
+			if err != nil {
+				return nil, nil, err
+			}
+			release, err := a.claim(lc, agentID(req))
+			if err != nil {
+				return nil, nil, err
+			}
+			defer release()
+			cl, err := a.sftpFor(lc.id)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -449,11 +479,16 @@ func (a *App) newMCPServer() *mcp.Server {
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "sftp_upload", Description: "Upload a local Windows file to a remote path."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in sftpXferIn) (*mcp.CallToolResult, any, error) {
+		func(ctx context.Context, req *mcp.CallToolRequest, in sftpXferIn) (*mcp.CallToolResult, any, error) {
 			lc, err := a.resolveTab(in.Tab)
 			if err != nil {
 				return nil, nil, err
 			}
+			release, err := a.claim(lc, agentID(req))
+			if err != nil {
+				return nil, nil, err
+			}
+			defer release()
 			cl, err := a.sftpFor(lc.id)
 			if err != nil {
 				return nil, nil, err
@@ -495,20 +530,29 @@ func (a *App) findSession(q string) (Session, error) {
 	return Session{}, fmt.Errorf("no session %q (see list_sessions)", q)
 }
 
-// tabForSession returns a connected tab of the saved session, preferring the active one.
-func (a *App) tabForSession(sessionID string) *liveConn {
+// tabForSession returns a connected tab of the saved session that no other AI
+// session is driving, preferring the active one, and takes it for agent.
+func (a *App) tabForSession(agent, sessionID string) *liveConn {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if lc := a.conns[a.activeTab]; lc != nil && lc.sessionID == sessionID {
-		return lc
-	}
-	var best *liveConn
+	var cands []*liveConn
 	for _, lc := range a.conns {
-		if !lc.hidden && lc.sessionID == sessionID && (best == nil || lc.id < best.id) {
-			best = lc
+		if !lc.hidden && lc.sessionID == sessionID {
+			cands = append(cands, lc)
 		}
 	}
-	return best
+	sort.Slice(cands, func(i, j int) bool {
+		if (cands[i].id == a.activeTab) != (cands[j].id == a.activeTab) {
+			return cands[i].id == a.activeTab
+		}
+		return cands[i].id < cands[j].id
+	})
+	for _, lc := range cands {
+		if lc.lock.tryOwn(agent) {
+			return lc
+		}
+	}
+	return nil
 }
 
 func (a *App) resolveTab(q string) (*liveConn, error) {
@@ -655,12 +699,12 @@ loop:
 	return out, nil
 }
 
-// openForMCP returns a connected tab for a saved session: an open one is
-// reused unless forceNew; otherwise the UI opens a new tab and we wait for it
-// (and for its logon actions).
-func (a *App) openForMCP(ctx context.Context, sess Session, forceNew bool) (*liveConn, string, error) {
+// openForMCP returns a connected tab for a saved session: an open one that no
+// other AI session is driving is reused unless forceNew; otherwise the UI opens
+// a new background tab and we wait for it (and for its logon actions).
+func (a *App) openForMCP(ctx context.Context, agent string, sess Session, forceNew bool) (*liveConn, string, error) {
 	if !forceNew {
-		if lc := a.tabForSession(sess.ID); lc != nil {
+		if lc := a.tabForSession(agent, sess.ID); lc != nil {
 			runtime.EventsEmit(a.ctx, "mcp:focus", lc.id)
 			return lc, "already open, reusing it", nil
 		}
@@ -684,6 +728,7 @@ func (a *App) openForMCP(ctx context.Context, sess Session, forceNew bool) (*liv
 	if lc == nil {
 		return nil, "", fmt.Errorf("%s: the connection closed right after opening", sess.Name)
 	}
+	lc.lock.own(agent)
 	msg := "connected"
 	if lc.logonDone != nil { // let the session's logon actions finish before the agent types
 		select {
@@ -700,7 +745,7 @@ func (a *App) openForMCP(ctx context.Context, sess Session, forceNew bool) (*liv
 
 // runOnTabs resolves the targets, opens saved sessions in parallel and runs
 // the command on every tab at the same time.
-func (a *App) runOnTabs(ctx context.Context, in multiIn) (*mcp.CallToolResult, any, error) {
+func (a *App) runOnTabs(ctx context.Context, agent string, in multiIn) (*mcp.CallToolResult, any, error) {
 	if strings.TrimSpace(in.Command) == "" {
 		return nil, nil, errors.New("command is empty")
 	}
@@ -757,7 +802,7 @@ func (a *App) runOnTabs(ctx context.Context, in multiIn) (*mcp.CallToolResult, a
 				res[i].err = err
 				return
 			}
-			res[i].lc, res[i].note, res[i].err = a.openForMCP(ctx, sess, false)
+			res[i].lc, res[i].note, res[i].err = a.openForMCP(ctx, agent, sess, false)
 		}(i, name)
 	}
 	wg.Wait()
@@ -768,6 +813,25 @@ func (a *App) runOnTabs(ctx context.Context, in multiIn) (*mcp.CallToolResult, a
 		}
 		add(r.lc, r.note)
 	}
+	// Reserve every tab before typing anything; tabs another AI session is
+	// driving are skipped rather than shared.
+	var releases []func()
+	defer func() {
+		for _, r := range releases {
+			r()
+		}
+	}()
+	kept := targets[:0]
+	for _, tg := range targets {
+		release, err := a.claim(tg.lc, agent)
+		if err != nil {
+			problems = append(problems, err.Error())
+			continue
+		}
+		releases = append(releases, release)
+		kept = append(kept, tg)
+	}
+	targets = kept
 	if len(targets) == 0 {
 		return nil, nil, fmt.Errorf("no tabs to run on: %s", strings.Join(problems, "; "))
 	}

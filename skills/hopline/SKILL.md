@@ -7,15 +7,16 @@ description: Work on network devices and servers through the Hopline terminal's 
 
 # Working on devices through Hopline
 
-Hopline is a terminal app (SSH, serial) running on the user's PC. Its MCP tools type into real terminal tabs that the user can see, so everything you run happens in front of them, on real equipment. Treat it like working over someone's shoulder on production gear: careful, explicit, and easy to follow.
+Hopline is a terminal app (SSH, serial) running on the user's PC. Its MCP tools type into real terminal tabs that the user can open and watch (tabs you drive show an AI badge), so everything you run happens on real equipment, in plain view. Treat it like working over someone's shoulder on production gear: careful, explicit, and easy to follow.
 
 ## 1. Find the right tab
 
 Start with `list_tabs`. The user often already has the device open (and is logged in, maybe in enable mode). Each line shows the tab id, name, kind, target, and `(active)` for the tab in front.
 
-- "this tab", "current tab", "지금 탭", "여기서" → use `tab: "active"`.
+- "this tab", "current tab", "지금 탭", "여기서" → use `tab: "active"` once to find it, then keep using its tab id. The user keeps working in other tabs while you run, so `"active"` can point somewhere else a minute later.
 - A device name the user mentions → match it against tab names and targets.
-- Nothing suitable open → `list_sessions`, then `open_session` with the saved session name. It reuses an open tab of the same session; pass `new: true` only when a second tab is really needed.
+- Nothing suitable open → `list_sessions`, then `open_session` with the saved session name. It reuses an open tab of the same session; pass `new: true` only when a second tab is really needed. New tabs open in the background; Hopline doesn't switch the user's view.
+- Other AI sessions may be using Hopline at the same time. Leave tabs that `list_tabs` marks `in use by another AI session` alone. If a call says a tab is busy or used by another AI session, don't retry on it: `open_session` with `new: true` gives you your own tab.
 
 Sessions marked `auto_logon=true` run their logon steps (enable, jump host, console login) before `open_session` returns, so the tab is already at the right prompt. If a session has no saved password, Hopline asks the user for it in its own window; wait for that. Never ask the user to type a password into the chat, and never send credentials with `send_keys`.
 

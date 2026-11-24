@@ -41,6 +41,8 @@ type liveConn struct {
 
 	out outTap // recent output + MCP captures
 
+	lock tabLock // which AI session is driving this tab (see agentlock.go)
+
 	logonDone chan struct{} // closed when logon actions finish; nil if the session has none
 }
 
