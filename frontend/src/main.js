@@ -848,7 +848,8 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
 
     const tab = {
         id, session: s, adhoc, title: s.name, kind: s.kind, term, fit, search, pane,
-        status: 'connecting', logging: false, multi: true, mcpPending: viaMcp, bot: false, ai: newAIConversation(),
+        // AI tabs stay out of multi-input so the user's typing never reaches them.
+        status: 'connecting', logging: false, multi: !viaMcp, mcpPending: viaMcp, bot: false, ai: newAIConversation(),
         hl: new Highlighter(term, () => hlCompiled, () => resolveScheme(prefs.termScheme, isDark())),
     };
     state.tabs.push(tab);
@@ -910,7 +911,11 @@ function openSession(s, adhoc = false, forcedId = null, viaMcp = false) {
         ]);
     });
 
-    activate(tab);
+    // A tab the AI opens stays in the background unless nothing else is open.
+    if (viaMcp && state.active) {
+        layoutPanes();
+        renderTabs();
+    } else activate(tab);
     connectTab(tab);
 }
 
@@ -1997,24 +2002,22 @@ EventsOn('mcp:open', async ({connId, sessionId}) => {
     toast(t('mcp.opening', {name: s.name}));
     openSession(s, false, connId, true);
 });
-EventsOn('mcp:focus', (id) => {
-    const t = state.tabs.find((x) => x.id === id);
-    if (t && state.active !== t) activate(t);
-});
+// The AI works in the background: its tabs only get the AI badge, the user's
+// current tab (and keyboard focus) stay where they are.
+EventsOn('mcp:focus', (id) => markBot(state.tabs.find((x) => x.id === id), 'open_session'));
 EventsOn('mcp:close', (id) => {
     const t = state.tabs.find((x) => x.id === id);
     if (t) closeTab(t, true);
 });
-EventsOn('mcp:activity', ({connId, msg}) => {
-    const t = state.tabs.find((x) => x.id === connId);
+EventsOn('mcp:activity', ({connId, msg}) => markBot(state.tabs.find((x) => x.id === connId), msg));
+
+function markBot(t, msg) {
     if (!t) return;
     t.bot = msg;
-    // Bring the tab the AI is typing into to the front so the user can watch it.
-    if (state.active !== t) activate(t);
     renderTabs();
     clearTimeout(t.botTimer);
     t.botTimer = setTimeout(() => { t.bot = false; renderTabs(); }, 4000);
-});
+}
 
 async function refreshMcpButton() {
     const info = await App.GetMCPInfo();
